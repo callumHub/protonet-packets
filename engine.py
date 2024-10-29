@@ -1,6 +1,9 @@
 from tqdm import tqdm
 
 class Engine(object):
+    '''
+    Engine class entirely from Jake Snells prototypical network classifier
+    '''
     def __init__(self):
         hook_names = ['on_start', 'on_start_epoch', 'on_sample', 'on_forward',
                       'on_backward', 'on_end_epoch', 'on_update', 'on_end']

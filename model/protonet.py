@@ -175,10 +175,11 @@ class Protonet(nn.Module):
                 pvals.append(1-p_val)
 
         calibration_error = MulticlassCalibrationError(num_classes=n_class, n_bins=5, norm='l1')
-        print("Expected Calibration Error is: ", calibration_error(log_p_y.view(n_class*n_query, -1), target_inds.flatten()))
+        caliber = calibration_error(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
+        print("Expected Calibration Error is: ", caliber)
         acc_vals = torch.eq(y_hat, target_inds).float().mean()
         print("Accuracy:", correct_preds/(n_class*n_query))
-        return pvals, acc_vals
+        return pvals, acc_vals, caliber
 
 
 

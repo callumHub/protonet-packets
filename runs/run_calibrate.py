@@ -18,9 +18,12 @@ def main():
     end = time.time()
     print("\nelapsed time: ", end-start) # 7 seconds with cuda
 
-def calibrate_and_test(pnet, print_stats, use_cuda):
-    cal_dl = load("cal", 1)
-    sup_dl = load("train", 1) # splits = train => batch size 100
+def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
+    cal_dl = load("cal", 1, 5, 5)
+    sup_dl = load("train", 1, 5, 5) # splits = train => batch size 100
+    # For testing different splits
+    if full_path is not None:
+        sup_dl = load("train", 1, 5, 5, full_path)
 
     cal = {}
     sup = {}
@@ -51,18 +54,20 @@ def calibrate_and_test(pnet, print_stats, use_cuda):
     g_k = pnet.calibrate(sample)
 
     # TEST:
-    test_dl = load("test", 1)
+    test_dl = load("test", 1, 5, 5)
     total_acc = 0
     acc_vals = 0
     pvals = 0
     total_pval = []
+    calibers = []
     for sample in test_dl:
         if use_cuda:
             sample["xs"] = sample["xs"].cuda()
             sample["xq"] = sample["xq"].cuda()
-        pvals, acc_vals = pnet.test(sample_transform(sample), g_k, use_cuda)
+        pvals, acc_vals, caliber = pnet.test(sample_transform(sample), g_k, use_cuda)
         total_acc += acc_vals.mean()
         total_pval.append(np.mean(pvals))
+        calibers.append(caliber)
     if print_stats:
         print(f"Test accuracy (from last episode): {acc_vals.mean().item()}, \n"
               f"mean p value (from last episode): {np.mean(pvals)}\n"
@@ -70,11 +75,8 @@ def calibrate_and_test(pnet, print_stats, use_cuda):
               f"OOD Examples: {list[int](np.greater_equal(pvals, 0.95)).count(1)}\n"
               f"Proportion OOD: "
               f"{list[int](np.greater_equal(pvals, 0.95)).count(1)/list[int](np.greater_equal(pvals, 0.95)).count(0)}")
-        print(f"\nTest accuracy avg: {total_acc.mean().item()}, \n"
-              f"mean total p value : {np.mean(total_pval)}\n"
-              f"std total p val: {np.std(total_pval)}")
 
-
+    return acc_vals.mean().item, calibers
 
 
 if __name__ == '__main__':
