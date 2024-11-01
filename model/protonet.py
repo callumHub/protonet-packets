@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchmetrics.classification import MulticlassCalibrationError
+from torchmetrics.classification import MulticlassCalibrationError, MulticlassF1Score
 
 from torch.autograd import Variable
 from scipy.stats import gaussian_kde
@@ -19,7 +19,9 @@ use to get p values by with pdf f'n
 def get_kde(rel_mahalanobis, target_inds):
     class_kernel_densities = [0 for _ in range(5)]
     for idx in target_inds.squeeze().T[0]:
+        # TODO: Sometimes gives singular covariance matrix error, must handle
         class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu())
+
     return class_kernel_densities
 
 def euclidean_dist(x, y):
@@ -126,7 +128,7 @@ class Protonet(nn.Module):
         z_support = z[:n_class * n_support].view(n_class, n_support, z_dim)
         z_cal = z[n_class * n_support:].view(n_class, n_cal, z_dim)
         self.rmd = Mahalanobis(z_support) # Now compute mahalanobis # USE support to set mahal vars
-        # use calibrate to compute rel_mahal (if use sup, ood scores at test time will be higher
+        # use calibrate to compute rel_mahal (if using sup, ood scores at test time will be higher
         m_k_rel = torch.min(self.rmd.relative_mahalanobis_distance(z_cal), dim=1).values.view(n_class, n_cal)
 
 
@@ -174,12 +176,16 @@ class Protonet(nn.Module):
                 p_val = quad(g_k[predicted_class].pdf, r, np.inf)[0]
                 pvals.append(1-p_val)
 
+        # Calc stats
         calibration_error = MulticlassCalibrationError(num_classes=n_class, n_bins=5, norm='l1')
+        micro_f1 = MulticlassF1Score(num_classes=n_class, average='micro')
         caliber = calibration_error(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
+        micro_f = micro_f1(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
         print("Expected Calibration Error is: ", caliber)
+        print("Micro F1 Score is: ", micro_f)
         acc_vals = torch.eq(y_hat, target_inds).float().mean()
         print("Accuracy:", correct_preds/(n_class*n_query))
-        return pvals, acc_vals, caliber
+        return pvals, acc_vals, caliber, micro_f
 
 
 

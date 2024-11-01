@@ -23,7 +23,8 @@ def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
     sup_dl = load("train", 1, 5, 5) # splits = train => batch size 100
     # For testing different splits
     if full_path is not None:
-        sup_dl = load("train", 1, 5, 5, full_path)
+        sup_dl = load("train", 1, 5, 5, full_path+"/train.jsonl")
+        cal_dl = load("cal", 1, 5, 5, full_path+"/cal.jsonl")
 
     cal = {}
     sup = {}
@@ -54,20 +55,22 @@ def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
     g_k = pnet.calibrate(sample)
 
     # TEST:
-    test_dl = load("test", 1, 5, 5)
+    test_dl = load("test", 1, 5, 5, full_path+"/test.jsonl")
     total_acc = 0
     acc_vals = 0
     pvals = 0
     total_pval = []
     calibers = []
+    micros = []
     for sample in test_dl:
         if use_cuda:
             sample["xs"] = sample["xs"].cuda()
             sample["xq"] = sample["xq"].cuda()
-        pvals, acc_vals, caliber = pnet.test(sample_transform(sample), g_k, use_cuda)
+        pvals, acc_vals, caliber, micro_f1 = pnet.test(sample_transform(sample), g_k, use_cuda)
         total_acc += acc_vals.mean()
         total_pval.append(np.mean(pvals))
-        calibers.append(caliber)
+        calibers.append(caliber.item())
+        micros.append(micro_f1.item())
     if print_stats:
         print(f"Test accuracy (from last episode): {acc_vals.mean().item()}, \n"
               f"mean p value (from last episode): {np.mean(pvals)}\n"
@@ -76,7 +79,7 @@ def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
               f"Proportion OOD: "
               f"{list[int](np.greater_equal(pvals, 0.95)).count(1)/list[int](np.greater_equal(pvals, 0.95)).count(0)}")
 
-    return acc_vals.mean().item, calibers
+    return acc_vals.mean().item(), calibers[0], micros[0]
 
 
 if __name__ == '__main__':
