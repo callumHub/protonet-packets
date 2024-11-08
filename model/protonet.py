@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchmetrics.classification import MulticlassCalibrationError, MulticlassF1Score
+from torchmetrics.classification import MulticlassCalibrationError, MulticlassF1Score, MulticlassConfusionMatrix
 
 from torch.autograd import Variable
 from scipy.stats import gaussian_kde
@@ -18,7 +18,7 @@ use to get p values by with pdf f'n
 '''
 def get_kde(rel_mahalanobis, target_inds):
     class_kernel_densities = [0 for _ in range(5)]
-    for idx in target_inds.squeeze().T[0]:
+    for idx in range(5):#target_inds.squeeze().T[0]:
         # TODO: Sometimes gives singular covariance matrix error, must handle
         class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu())
 
@@ -71,13 +71,6 @@ class Protonet(nn.Module):
                                                                          1).long()  # CHANGED, removed ,1 from last arg of view and expand
         target_inds = Variable(target_inds, requires_grad=False)
 
-        '''
-        # THIS DOESNT WORK IN TRAIN, BUT IS REQUIRED FOR CALIBRATE AND TEST! WHAT IS GOING ON
-        target_inds = torch.tensor(np.vectorize(class_map.get)(sample["class"])).view(n_class, 1, 1).expand(n_class, n_query,
-                                                                               1).long()  # CHANGED, removed ,1 from last arg of view and expand
-        
-        target_inds = Variable(target_inds, requires_grad=False)
-        '''
         if xq.is_cuda:
             target_inds = target_inds.cuda()
 
@@ -138,17 +131,23 @@ class Protonet(nn.Module):
 
     # Alg 3
     def test(self, sample, g_k, use_cuda=False):
-
+        """
+        :param sample: contains query and support examples for test
+        :param g_k: Gaussian kernel densities for each class
+        :param use_cuda:
+        :return: pvals, acc_vals, caliber, micro_f, confusion
+        """
         xq = sample['xq']
         xs = sample['xs']
         n_class = xs.size(0)
         n_query = xq.size(1)
         n_support = xs.size(1)
 
-
+        # Examples are in order of class so just set target indices as:
         target_inds = torch.arange(0, n_class).view(n_class, 1, 1).expand(n_class, n_query,
-                                                                         1).long().squeeze()  # CHANGED, removed ,1 from last arg of view and expand
+                                                                         1).long().squeeze()
         target_inds = Variable(target_inds, requires_grad=False)
+
         if use_cuda: target_inds = target_inds.cuda()
 
         x = torch.cat([xs.view(n_class * n_support, *xs.size()[2:]),
@@ -167,25 +166,27 @@ class Protonet(nn.Module):
         rel_d = torch.min(self.rmd.relative_mahalanobis_distance(z), dim=1).values.view(n_class, n_query)
         pvals = []
         correct_preds = 0
-
+        # OOD Scoring
         for i in range(n_class):
             for index in range(len(y_hat.tolist()[i])):
                 predicted_class = y_hat.tolist()[i][index]
                 if i == predicted_class: correct_preds += 1
                 r = rel_d.tolist()[predicted_class][index]
-                p_val = quad(g_k[predicted_class].pdf, r, np.inf)[0]
-                pvals.append(1-p_val)
+                p_val = quad(g_k[predicted_class].pdf, r, np.inf)[0] # Integrate pdf to get p values
+                pvals.append(1-p_val) # confidence score is 1 minus the p value
 
         # Calc stats
         calibration_error = MulticlassCalibrationError(num_classes=n_class, n_bins=5, norm='l1')
         micro_f1 = MulticlassF1Score(num_classes=n_class, average='micro')
         caliber = calibration_error(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
         micro_f = micro_f1(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
+        confusion_matrix = MulticlassConfusionMatrix(num_classes=5)
+        confusion = confusion_matrix(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
         print("Expected Calibration Error is: ", caliber)
         print("Micro F1 Score is: ", micro_f)
         acc_vals = torch.eq(y_hat, target_inds).float().mean()
         print("Accuracy:", correct_preds/(n_class*n_query))
-        return pvals, acc_vals, caliber, micro_f
+        return pvals, acc_vals, caliber, micro_f, confusion
 
 
 
@@ -193,19 +194,26 @@ class Protonet(nn.Module):
 def load_protonet_lin(**kwargs):
     x_dim = kwargs['x_dim']
     hid_dim = kwargs['hid_dim']
+    #hid_dim = 7
+    hid_dim2 = int(1024) # hardcode
+    hid_dim3 = int(1024)
     z_dim = kwargs['z_dim']
+    z_dim = 64
 
     encoder = nn.Sequential(
         nn.Linear(x_dim[0], hid_dim),
         nn.ReLU(),
-        nn.Linear(hid_dim, hid_dim),
-        nn.ReLU(),
-        nn.Dropout(0.25),
-        nn.Linear(hid_dim, hid_dim),
-        nn.ReLU(),
-        nn.Dropout(0.25),
+        #nn.Linear(hid_dim, hid_dim2),
+        #nn.ReLU(),
+        #nn.Dropout(0.25),
+        #nn.Linear(hid_dim2, hid_dim3),
+        #nn.ReLU(),
+        #nn.Dropout(0.25),
         nn.Linear(hid_dim, z_dim)#,
         #Flatten()
+    )
+    encoder = nn.Sequential(
+        nn.Linear(x_dim[0], z_dim)
     )
 
     return Protonet(encoder)

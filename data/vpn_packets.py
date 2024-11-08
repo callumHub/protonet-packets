@@ -25,7 +25,7 @@ class VPNDataTransforms(object):
         self.data = pd.read_json(self.data_path, lines=True)
         if full_path is not None:
             print("Data length: ", len(self.data))
-            #print("length of the minimum class: ", len(self.data.data[self.data["labels"] == "VOIP"]))
+            print("length of the minimum class: ", len(self.data.data[self.data["labels"] == "VOIP"]))
         self.data.data = self.data.data.apply(lambda x: torch.tensor(x, dtype=torch.float32))
         self.class_map = {"C2": 0, "CHAT": 1, "FILE_TRANSFER": 2, "STREAMING": 3, "VOIP": 4}
         self.out_dict = {}
@@ -57,7 +57,7 @@ class VPNDataset(Dataset):
         min_class = len(dicter.data.data[dicter.data["labels"] == "VOIP"])
         # Used to be hard coded to 100 now set to min class
         dicter.make_dict()
-        self.n_support = 5
+        self.n_support = 5 if min_class > 5 else 1
         self.batch_size = min_class - self.n_support #if splits == "train" else 33 # SETTING BATCH SIZE HERE: SETS TO MAX POSSIBLE BATCH FOR CLASSES
         self.data = dicter.out_dict
         self.class_map = {"C2": 0, "CHAT": 1, "FILE_TRANSFER": 2, "STREAMING": 3, "VOIP": 4}

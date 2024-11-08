@@ -10,23 +10,13 @@ import utils.model as model_utils
 import utils.log as log_utils
 import os
 from run_calibrate import calibrate_and_test
-from show_results.result_plot import micro_f1_against_data_frac, ece_against_data_frac
+
 
 def main():
-    '''
     run_train()
     protonet = model_utils.load_model(path="./outs/pnet.pt")
     protonet.eval()
     calibrate_and_test(protonet, False, False)
-    '''
-    eces = []
-    f1s = []
-    for i in range(10):
-        acc, ece, f1 = run_train_with_fraction_train()
-        eces.append(ece)
-        f1s.append(f1)
-    micro_f1_against_data_frac(f1s)
-    ece_against_data_frac(eces)
 
 
 def run_train(full_path=None):
@@ -75,26 +65,6 @@ def run_train(full_path=None):
 
 
 
-def run_train_with_fraction_train():
-    train_accs = []
-    test_accs = []
-    test_calibers = []
-    test_micro_f1s = []
-    for i in range(1, 8):
-        print(f"***Training with {80 - i*10}% of entire data")
-        fp = f"../../enc-vpn-uncertainty-class-repl/processed_data/fraction_train/train_{80 - i*10}.jsonl"
-        train_acc, train_loss, net = run_train(full_path=fp)
-        net.eval()
-        test_acc, test_calib_err, micro_f1s = calibrate_and_test(net, True, False, full_path=fp)
-        train_accs.append(train_acc)
-        test_accs.append(test_acc)
-        test_calibers.append(test_calib_err)
-        test_micro_f1s.append(micro_f1s)
-    print("**** FINISHED ****")
-    print("Test accuracies: ", test_accs)
-    print("Test calibration errors: ", test_calibers)
-    print("Test Micro F1's: ", test_micro_f1s)
-    return test_accs, test_calibers, test_micro_f1s
 
 if __name__ == '__main__':
     main()

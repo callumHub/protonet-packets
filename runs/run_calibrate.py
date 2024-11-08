@@ -55,7 +55,10 @@ def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
     g_k = pnet.calibrate(sample)
 
     # TEST:
-    test_dl = load("test", 1, 5, 5, full_path+"/test.jsonl")
+    if full_path is not None:
+        test_dl = load("test", 1, 5, 5, full_path+"/test.jsonl")
+    else:
+        test_dl = load("test", 1, 5, 5)
     total_acc = 0
     acc_vals = 0
     pvals = 0
@@ -66,7 +69,7 @@ def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
         if use_cuda:
             sample["xs"] = sample["xs"].cuda()
             sample["xq"] = sample["xq"].cuda()
-        pvals, acc_vals, caliber, micro_f1 = pnet.test(sample_transform(sample), g_k, use_cuda)
+        pvals, acc_vals, caliber, micro_f1, confusions = pnet.test(sample_transform(sample), g_k, use_cuda)
         total_acc += acc_vals.mean()
         total_pval.append(np.mean(pvals))
         calibers.append(caliber.item())
@@ -79,7 +82,7 @@ def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
               f"Proportion OOD: "
               f"{list[int](np.greater_equal(pvals, 0.95)).count(1)/list[int](np.greater_equal(pvals, 0.95)).count(0)}")
 
-    return acc_vals.mean().item(), calibers[0], micros[0]
+    return acc_vals.mean().item(), calibers[0], micros[0], confusions
 
 
 if __name__ == '__main__':

@@ -1,4 +1,7 @@
 .idea
 .git
 .venv
-
+runs/eval_outs
+runs/outs
+runs/__pycache__
+model/__pycache__
