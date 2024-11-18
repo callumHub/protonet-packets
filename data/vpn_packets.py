@@ -54,11 +54,10 @@ class VPNDataset(Dataset):
     def __init__(self, splits, fp=None):
         if fp is not None: dicter = VPNDataTransforms(splits, full_path=fp)
         else: dicter = VPNDataTransforms(splits)
-        min_class = len(dicter.data.data[dicter.data["labels"] == "VOIP"])
-        # Used to be hard coded to 100 now set to min class
+        min_class = len(dicter.data.data[dicter.data["labels"] == "VOIP"]) # VOIP is min class
         dicter.make_dict()
         self.n_support = 5 if min_class > 5 else 1
-        self.batch_size = min_class - self.n_support #if splits == "train" else 33 # SETTING BATCH SIZE HERE: SETS TO MAX POSSIBLE BATCH FOR CLASSES
+        self.batch_size = min_class - self.n_support
         self.data = dicter.out_dict
         self.class_map = {"C2": 0, "CHAT": 1, "FILE_TRANSFER": 2, "STREAMING": 3, "VOIP": 4}
         self.class_list = ["C2", "CHAT", "FILE_TRANSFER", "STREAMING", "VOIP"]

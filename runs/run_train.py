@@ -57,7 +57,7 @@ def run_train(full_path=None):
     accuracy = meters['acc'].val
     loss = meters['loss'].val
     print(f"Accuracy: {accuracy}, Loss: {loss}")
-    print("Saving Model: ")
+    print("Saving Model... ")
     os.makedirs(os.path.join(os.getcwd(), "outs"), exist_ok=True)
     torch.save(pnet.state_dict(), os.path.join(os.getcwd(), "outs", "pnet.pt"))
     print("Model saved to: ", os.path.join(os.getcwd(), "outs", "pnet.pt"))

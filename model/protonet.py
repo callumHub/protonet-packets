@@ -195,25 +195,27 @@ def load_protonet_lin(**kwargs):
     x_dim = kwargs['x_dim']
     hid_dim = kwargs['hid_dim']
     #hid_dim = 7
-    hid_dim2 = int(1024) # hardcode
-    hid_dim3 = int(1024)
+    hid_dim2 = 64 # int(1024) # hardcode
+    hid_dim3 = 64 # int(1024)
     z_dim = kwargs['z_dim']
     z_dim = 64
 
     encoder = nn.Sequential(
         nn.Linear(x_dim[0], hid_dim),
         nn.ReLU(),
-        #nn.Linear(hid_dim, hid_dim2),
-        #nn.ReLU(),
-        #nn.Dropout(0.25),
-        #nn.Linear(hid_dim2, hid_dim3),
-        #nn.ReLU(),
-        #nn.Dropout(0.25),
-        nn.Linear(hid_dim, z_dim)#,
-        #Flatten()
+        nn.Linear(hid_dim, hid_dim2),
+        nn.ReLU(),
+        nn.Dropout(0.25),
+        nn.Linear(hid_dim2, hid_dim3),
+        nn.ReLU(),
+        nn.Dropout(0.25),
+        nn.Linear(hid_dim, z_dim),
+        Flatten()
     )
-    encoder = nn.Sequential(
-        nn.Linear(x_dim[0], z_dim)
-    )
+    #encoder = nn.Sequential(
+    #    nn.Linear(x_dim[0], z_dim)
+    #)
 
     return Protonet(encoder)
+
+

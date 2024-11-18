@@ -14,17 +14,19 @@ def main():
     protonet = load_model(path="./outs/pnet.pt")
     protonet.eval()
     for i in range(10):
-        calibrate_and_test(protonet, True, use_cuda=False) # faster without on mine data
+        calibrate_and_test(protonet, True, use_cuda=False, full_path="../../enc-vpn-uncertainty-class-repl/processed_data/stable_cal_fraction/min_max_normalized/run0/frac_80") # faster without on mine data
     end = time.time()
     print("\nelapsed time: ", end-start) # 7 seconds with cuda
 
 def calibrate_and_test(pnet, print_stats, use_cuda, full_path=None):
-    cal_dl = load("cal", 1, 5, 5)
-    sup_dl = load("train", 1, 5, 5) # splits = train => batch size 100
+
     # For testing different splits
     if full_path is not None:
         sup_dl = load("train", 1, 5, 5, full_path+"/train.jsonl")
         cal_dl = load("cal", 1, 5, 5, full_path+"/cal.jsonl")
+    else:
+        cal_dl = load("cal", 1, 5, 5)
+        sup_dl = load("train", 1, 5, 5) # splits = train => batch size 100
 
     cal = {}
     sup = {}
