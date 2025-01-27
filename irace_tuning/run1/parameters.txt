@@ -1,0 +1,3 @@
+lr "--lr " r (0.00001,0.0001) | ptype == "a"
+weight_decay "--weight_decay " r (0,0.25) | ptype == "b"
+ptype "--ptype " c ("a", "b")
