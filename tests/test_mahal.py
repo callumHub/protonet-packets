@@ -19,7 +19,7 @@ class TestMahalanobis(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestMahalanobis, self).__init__(*args, **kwargs)
         self.mahal = Mahalanobis(z_cal)
-        pnet = load_protonet_lin(**{"x_dim": [128], "hid_dim": 64, "z_dim": 64})
+        pnet = load_protonet_lin(**{"x_dim": [128], "hid_dim": 64, "z_dim": 64, "dropout": 0.25, "hidden_layers": 3})
         pnet.load_state_dict(torch.load("../runs/outs/pnet.pt", weights_only=True))
         self.baseline_mahal = RMD(pnet)
         self.baseline_mahal.fit_features(z_cal, targets)

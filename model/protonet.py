@@ -16,11 +16,11 @@ from utils.mahal_utils import Mahalanobis
 return list of univariate gaussian kde for each class
 use to get p values by with pdf f'n
 '''
-def get_kde(rel_mahalanobis, target_inds):
-    class_kernel_densities = [0 for _ in range(5)]
-    for idx in range(5):#target_inds.squeeze().T[0]:
+def get_kde(rel_mahalanobis, target_inds, n_way):
+    class_kernel_densities = [0 for _ in range(n_way)]
+    for idx in range(n_way):#target_inds.squeeze().T[0]:
         # TODO: Sometimes gives singular covariance matrix error, must handle
-        class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu())
+        class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu(), bw_method='scott')
 
     return class_kernel_densities
 
@@ -126,11 +126,11 @@ class Protonet(nn.Module):
 
 
         # Obtain n_class Gaussian KDE's for each class
-        g_k = get_kde(m_k_rel, target_inds)
+        g_k = get_kde(m_k_rel, target_inds, n_class)
         return g_k # Used in alg 3!
 
     # Alg 3
-    def test(self, sample, g_k, use_cuda=False):
+    def test(self, sample, g_k, use_cuda=False, calc_stats=True):
         """
         :param sample: contains query and support examples for test
         :param g_k: Gaussian kernel densities for each class
@@ -139,12 +139,12 @@ class Protonet(nn.Module):
         """
         xq = sample['xq']
         xs = sample['xs']
-        n_class = xs.size(0)
+        n_way = xq.size(0) # len(g_k) # number of targets
+        n_class = xq.size(0)
         n_query = xq.size(1)
         n_support = xs.size(1)
-
         # Examples are in order of class so just set target indices as:
-        target_inds = torch.arange(0, n_class).view(n_class, 1, 1).expand(n_class, n_query,
+        target_inds = torch.arange(0, n_way).view(n_way, 1, 1).expand(n_way, n_query,
                                                                          1).long().squeeze()
         target_inds = Variable(target_inds, requires_grad=False)
 
@@ -165,57 +165,103 @@ class Protonet(nn.Module):
 
         rel_d = torch.min(self.rmd.relative_mahalanobis_distance(z), dim=1).values.view(n_class, n_query)
         pvals = []
+        mid_pvals = []
         correct_preds = 0
         # OOD Scoring
-        for i in range(n_class):
+        for i in range(n_way):
             for index in range(len(y_hat.tolist()[i])):
                 predicted_class = y_hat.tolist()[i][index]
                 if i == predicted_class: correct_preds += 1
                 r = rel_d.tolist()[predicted_class][index]
                 p_val = quad(g_k[predicted_class].pdf, r, np.inf)[0] # Integrate pdf to get p values
-                pvals.append(1-p_val) # confidence score is 1 minus the p value
+                mid_pvals.append(1-p_val) # confidence score is 1 minus the p value
+            pvals.append(mid_pvals)
 
         # Calc stats
-        calibration_error = MulticlassCalibrationError(num_classes=n_class, n_bins=5, norm='l1')
-        micro_f1 = MulticlassF1Score(num_classes=n_class, average='micro')
-        caliber = calibration_error(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
-        micro_f = micro_f1(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
-        confusion_matrix = MulticlassConfusionMatrix(num_classes=5)
-        confusion = confusion_matrix(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
-        print("Expected Calibration Error is: ", caliber)
-        print("Micro F1 Score is: ", micro_f)
-        acc_vals = torch.eq(y_hat, target_inds).float().mean()
-        print("Accuracy:", correct_preds/(n_class*n_query))
-        return pvals, acc_vals, caliber, micro_f, confusion
+        if calc_stats:
+            calibration_error = MulticlassCalibrationError(num_classes=n_class, n_bins=n_class, norm='l1')
+            micro_f1 = MulticlassF1Score(num_classes=n_class, average='micro')
+            caliber = calibration_error(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
+            micro_f = micro_f1(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
+            confusion_matrix = MulticlassConfusionMatrix(num_classes=n_class)
+            confusion = confusion_matrix(log_p_y.view(n_class*n_query, -1), target_inds.flatten())
+            #print("Expected Calibration Error is: ", caliber)
+            #print("Micro F1 Score is: ", micro_f)
+            acc_vals = torch.eq(y_hat, target_inds).float().mean()
+            #print("Accuracy:", correct_preds/(n_class*n_query))
+            return mid_pvals, acc_vals, caliber, micro_f, confusion
+        else:
+            return pvals, torch.tensor(0.1), torch.tensor(0.01), torch.tensor(0.1), torch.tensor(0.01) # Dummy vals
 
+    def ood_score(self, sample, g_k):
+        n_way = len(g_k)
+        n_examples = sample.size(0)
+        z = self.encoder.forward(sample)
+        z = z.unsqueeze(0)
+        dists = self.rmd.diag_mahalanobis_distance(z)
+        log_p_y = F.log_softmax(-dists, dim=1).view(n_examples, -1)
+        _, y_hat = log_p_y.max(1)
+        rel_d = torch.min(self.rmd.relative_mahalanobis_distance(z), dim=1).values.view(-1, n_examples)
+        pvals = []
+        mid_pvals = []
+        correct_preds = 0
+        # OOD Scoring
+
+        for index in range(len(y_hat.tolist())):
+            predicted_class = y_hat.tolist()[index]
+            r = rel_d.tolist()[0][index]
+            p_val = quad(g_k[predicted_class].pdf, r, np.inf)[0]  # Integrate pdf to get p values
+            mid_pvals.append(1 - p_val)  # confidence score is 1 minus the p value
+        pvals.append(mid_pvals)
+        return pvals
 
 
 @register_model('protonet_lin')
 def load_protonet_lin(**kwargs):
     x_dim = kwargs['x_dim']
     hid_dim = kwargs['hid_dim']
-    #hid_dim = 7
+    dropout = kwargs['dropout']
+    hidden_layers = kwargs['hidden_layers']
     hid_dim2 = 64 # int(1024) # hardcode
     hid_dim3 = 64 # int(1024)
     z_dim = kwargs['z_dim']
     z_dim = 64
-
-    encoder = nn.Sequential(
-        nn.Linear(x_dim[0], hid_dim),
-        nn.ReLU(),
-        nn.Linear(hid_dim, hid_dim2),
-        nn.ReLU(),
-        nn.Dropout(0.25),
-        nn.Linear(hid_dim2, hid_dim3),
-        nn.ReLU(),
-        nn.Dropout(0.25),
-        nn.Linear(hid_dim, z_dim),
-        Flatten()
-    )
-    #encoder = nn.Sequential(
-    #    nn.Linear(x_dim[0], z_dim)
-    #)
-
+    if hidden_layers == 3:
+        encoder = nn.Sequential(
+            nn.Linear(x_dim[0], hid_dim),
+            nn.ReLU(),
+            nn.Linear(hid_dim, hid_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid_dim, hid_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid_dim, z_dim),
+            Flatten()
+        )
+    elif hidden_layers == 2:
+        encoder = nn.Sequential(
+            nn.Linear(x_dim[0], hid_dim),
+            nn.ReLU(),
+            nn.Linear(hid_dim, hid_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid_dim, z_dim),
+            Flatten()
+        )
+    elif hidden_layers == 1:
+        encoder = nn.Sequential(
+            nn.Linear(x_dim[0], hid_dim),
+            nn.ReLU(),
+            nn.Linear(hid_dim, z_dim),
+            Flatten()
+        )
+    elif hidden_layers == 0:
+        encoder = nn.Sequential(
+            nn.Linear(x_dim[0], z_dim)
+        )
+    else:
+        encoder = None
     return Protonet(encoder)
 
 

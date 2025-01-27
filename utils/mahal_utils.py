@@ -9,14 +9,14 @@ mahalanobis_distance = sqrt((x-mu).T*sigma^-1*(x-mu)
 import numpy as np
 import torch
 from scipy.spatial.distance import mahalanobis
-from torch.ao.quantization.fx.utils import return_arg_list
 
 
 class Mahalanobis(object):
     def __init__(self, calibration_embeddings):
         self.calibration_embeddings = calibration_embeddings
         self.n_class, self.n_calibrate, self.z_dim = calibration_embeddings.size()
-        
+        self.mu_0 = self._get_whole_mean()
+        self.sigma_0 = self._get_whole_sigma()
     def mahalanobis_distance(self, z, mu, sigma, diagonal=False):
         # embs = NXD
         # mu = MXD
@@ -43,7 +43,7 @@ class Mahalanobis(object):
         return self.mahalanobis_distance(self.calibration_embeddings, self._get_class_means(), self._get_class_sigma())
 
     def _calc_overall_distance(self):
-        return self.mahalanobis_distance(self.calibration_embeddings, self._get_whole_mean(), self._get_whole_sigma())
+        return self.mahalanobis_distance(self.calibration_embeddings, self.mu_0, self.sigma_0)
 
     def relative_mahalanobis_distance(self, z):
         temp = self.calibration_embeddings
