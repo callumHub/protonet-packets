@@ -22,6 +22,7 @@ UT_MOBILE_CLASS_MAP = {
             }
 
 OG_CLASS_MAP = {"C2": 0, "CHAT": 1, "FILE_TRANSFER": 2, "STREAMING": 3, "VOIP": 4} # OG VPN Data Classses
+COMBINED_CLASS_MAP = {"C2": 0, "CHAT": 1, "FILE_TRANSFER": 2, "STREAMING": 3, "VOIP": 4, "SPOTIFY": 5}
 
 class VPNDataTransforms(object):
     def __init__(self, splits, n_classes, full_path=None):
@@ -39,6 +40,9 @@ class VPNDataTransforms(object):
         self.data.data = self.data.data.apply(lambda x: torch.tensor(x, dtype=torch.float32))
         if n_classes == 5: # OG VPN DATA
             self.class_map = OG_CLASS_MAP
+            self.class_list = list(self.class_map.keys())
+        elif n_classes == 6:
+            self.class_map = COMBINED_CLASS_MAP
             self.class_list = list(self.class_map.keys())
         else: # UTMOBILE CLASSLIST
             self.class_map = UT_MOBILE_CLASS_MAP

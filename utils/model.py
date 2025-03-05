@@ -6,8 +6,8 @@ from utils import filter_opt
 from model.factory import get_model
 import numpy as np
 
-def load_model(x_dim, hid_dim, dropout, hidden_layers, path):
-    pnet = load_protonet_lin(**{"x_dim": [x_dim], "hid_dim": hid_dim, "z_dim": x_dim, "dropout": dropout,
+def load_model(x_dim, hid_dim, z_dim, dropout, hidden_layers, path):
+    pnet = load_protonet_lin(**{"x_dim": [x_dim], "hid_dim": hid_dim, "z_dim": z_dim, "dropout": dropout,
                                 "hidden_layers": hidden_layers})
     pnet.load_state_dict(torch.load(path, weights_only=True))
     return pnet

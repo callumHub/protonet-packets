@@ -12,6 +12,4 @@
 ## are not enabled for a given configuration) and, if given, the
 ## constraints that describe forbidden configurations.
 lr	weight_decay 	dropout 	hidden_layers 	hidden_size 
-0.000258 	0.000869 	0.13435 	3 	512
-
-
+0.03421 	0.002298 	0.107547 	3 	256

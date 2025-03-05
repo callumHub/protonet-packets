@@ -1,7 +1,7 @@
 lr "--lr " r (0.00001, 0.1)
 weight_decay "--weight_decay " r (0,0.01)
 dropout "--dropout " r (0.1, 0.35)
-hidden_layers "--hidden_layers " i (0, 3)
+#hidden_layers "--hidden_layers " i (0, 0)
 hidden_size "--hidden_size " c (64, 128, 256, 512)  
 [global]
 digits = 6 # Maximum number of decimal places that are significant for numerical (real) parameters.

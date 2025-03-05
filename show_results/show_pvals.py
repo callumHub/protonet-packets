@@ -1,17 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 def main():
-    frac = 30
-    run_type = "ut_mobile_kfold_decreasing_fraction_64x64x64x64"
+    frac = 80
+    run_type = "ut_calib_ood_before"
+    run_type = "ut_calib_ood_after"
     #run_type = "baseline_pvals"
-    pvals = np.load(f"../runs/eval_outs/{run_type}/pvals_og_to_ut_frac{frac}.npy")
-    mean_pvals = np.load(f"../runs/eval_outs/{run_type}/total_pval_og_to_ut.npy")
+    pvals = np.load(f"../runs/eval_outs/{run_type}/after_train_pvals_og_to_ut_frac{frac}.npy")
+    #mean_pvals = np.load(f"../runs/eval_outs/{run_type}/total_pval_og_to_ut.npy")
     pvals = pvals.flatten().tolist()
     print(f"min pval: {min(pvals)}, max pval: {max(pvals)}, mean pval: {np.mean(pvals)},"
           f"\n# of ood examples: {list[int](np.greater_equal(pvals, 0.95)).count(1)}"
           f"\nTotal Pvals: {len(pvals)}")
     pvals_1 = pvals
-    run_type = "baseline_pvals"
+    run_type = "vpn_calib_ood"
     pvals_2 = np.load(f"../runs/eval_outs/{run_type}/pvals_og_to_ut_frac{frac}.npy")[0]
 
     plot_pvals(pvals_1, pvals_2)
@@ -52,7 +53,7 @@ def plot_pvals(pvals_1, pvals_2):
     plt.xticks([1, 2], categories)  # Set x-axis ticks to categories
     plt.xlabel('Datasets')
     plt.ylabel('OOD Score')
-    plt.title('Comparison of OOD Scores')
+    plt.title('Comparison of OOD Scores (After Retraining)')
     plt.legend()
 
     # Show plot

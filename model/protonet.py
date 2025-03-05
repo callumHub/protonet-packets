@@ -222,10 +222,7 @@ def load_protonet_lin(**kwargs):
     hid_dim = kwargs['hid_dim']
     dropout = kwargs['dropout']
     hidden_layers = kwargs['hidden_layers']
-    hid_dim2 = 64 # int(1024) # hardcode
-    hid_dim3 = 64 # int(1024)
     z_dim = kwargs['z_dim']
-    z_dim = 64
     if hidden_layers == 3:
         encoder = nn.Sequential(
             nn.Linear(x_dim[0], hid_dim),

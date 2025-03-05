@@ -1,0 +1,399 @@
+#------------------------------------------------------------------------------
+# irace: An implementation in R of (Elitist) Iterated Racing
+# Version: 4.1.ef8598f
+# Copyright (C) 2010-2020
+# Manuel Lopez-Ibanez     <manuel.lopez-ibanez@manchester.ac.uk>
+# Jeremie Dubois-Lacoste  
+# Leslie Perez Caceres    <leslie.perez.caceres@ulb.ac.be>
+#
+# This is free software, and you are welcome to redistribute it under certain
+# conditions.  See the GNU General Public License for details. There is NO
+# WARRANTY; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# irace builds upon previous code from the race package:
+#     race: Racing methods for the selection of the best
+#     Copyright (C) 2003 Mauro Birattari
+#------------------------------------------------------------------------------
+# installed at: /usr/local/lib/R/site-library/irace
+# called with: 
+Warning: == irace == A default scenario file '/mnt/c/Users/callu/Desktop/sep2023/ml-vpn-uncertainty-classification/packet_protonet/irace_tuning/scenario.txt' has been found and will be read.
+# 2025-02-18 13:28:25 AST: Reading parameter file '/mnt/c/Users/callu/Desktop/sep2023/ml-vpn-uncertainty-classification/packet_protonet/irace_tuning/parameters.txt'.
+# 2025-02-18 13:28:25 AST: Initialization
+# Elitist race
+# Elitist new instances: 1
+# Elitist limit: 2
+# nbIterations: 4
+# minNbSurvival: 4
+# nbParameters: 4
+# seed: 2001503663
+# confidence level: 0.95
+# budget: 1500
+# mu: 5
+# deterministic: FALSE
+
+# 2025-02-18 13:28:25 AST: Iteration 1 of 4
+# experimentsUsedSoFar: 0
+# remainingBudget: 1500
+# currentBudget: 375
+# nbConfigurations: 62
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|          1|         62|         18|    0.9952019453|         62|02:57:11|   NA|  NA|    NA|
+|x|          2|         62|         18|    0.9691808820|        124|02:43:43|+0.92|0.96|0.0837|
+|x|          3|         62|         18|    0.9645947019|        186|02:38:37|+0.92|0.95|0.0846|
+|x|          4|         62|         18|    0.9594455957|        248|02:28:55|+0.90|0.93|0.0919|
+|-|          5|          6|         18|    0.9530398250|        310|02:21:18|+0.58|0.67|0.1668|
+|-|          6|          1|         18|    0.9565371275|        316|00:12:06|   NA|  NA|    NA|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best-so-far configuration:          18    mean value:     0.9565371275
+Description of the best-so-far configuration:
+   .ID.       lr weight_decay  dropout hidden_size .PARENT.
+18   18 0.011551     0.000145 0.167511         128       NA
+
+# 2025-02-19 02:50:18 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+         lr weight_decay  dropout hidden_size
+18 0.011551     0.000145 0.167511         128
+# 2025-02-19 02:50:18 AST: Iteration 2 of 4
+# experimentsUsedSoFar: 316
+# remainingBudget: 1184
+# currentBudget: 394
+# nbConfigurations: 57
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|          7|         57|         82|    0.8017473817|         57|01:49:31|   NA|  NA|    NA|
+|x|          5|         57|         82|    0.8087134361|        113|01:38:19|+0.85|0.93|0.2933|
+|x|          4|         57|         82|    0.7961856524|        169|01:32:54|+0.87|0.91|0.1968|
+|x|          6|         57|         82|    0.7954323739|        225|01:31:09|+0.85|0.89|0.2513|
+|-|          3|          7|         82|    0.8070029259|        281|01:27:50|+0.82|0.86|0.1492|
+|-|          1|          3|         82|    0.8007479906|        287|00:09:19|+0.83|0.86|0.0437|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best configuration for the instances in this race: 82
+Best-so-far configuration:          18    mean value:     0.9522616182
+Description of the best-so-far configuration:
+   .ID.       lr weight_decay  dropout hidden_size .PARENT.
+18   18 0.011551     0.000145 0.167511         128       NA
+
+# 2025-02-19 10:59:24 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+18  0.011551     0.000145 0.167511         128
+82  0.003349     0.000056 0.274997         256
+114 0.003931     0.000181 0.213846         256
+# 2025-02-19 10:59:24 AST: Iteration 3 of 4
+# experimentsUsedSoFar: 603
+# remainingBudget: 897
+# currentBudget: 448
+# nbConfigurations: 58
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|          8|         58|         82|    0.7807711959|         58|01:32:41|   NA|  NA|    NA|
+|x|          4|         58|         82|    0.7759506404|        113|01:51:18|+0.82|0.91|0.1826|
+|x|          3|         58|        168|    0.7510818044|        168|01:46:51|+0.84|0.90|0.1467|
+|x|          5|         58|        168|    0.7469074875|        223|01:44:09|+0.83|0.87|0.1412|
+|-|          6|         11|        168|    0.7497930050|        278|01:46:39|+0.48|0.59|0.2575|
+|-|          7|          4|        168|    0.7496045431|        286|00:15:50|+0.85|0.88|0.0442|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best configuration for the instances in this race: 168
+Best-so-far configuration:          18    mean value:     0.9551888779
+Description of the best-so-far configuration:
+   .ID.       lr weight_decay  dropout hidden_size .PARENT.
+18   18 0.011551     0.000145 0.167511         128       NA
+
+# 2025-02-19 19:56:55 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+18  0.011551     0.000145 0.167511         128
+82  0.003349     0.000056 0.274997         256
+114 0.003931     0.000181 0.213846         256
+168 0.000621     0.000017 0.260775         256
+# 2025-02-19 19:56:55 AST: Iteration 4 of 4
+# experimentsUsedSoFar: 889
+# remainingBudget: 611
+# currentBudget: 611
+# nbConfigurations: 71
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|          9|         71|        178|    0.6836911440|         71|02:11:11|   NA|  NA|    NA|
+|x|          5|         71|        178|    0.7039511204|        138|01:56:33|+0.85|0.93|0.2082|
+|x|          6|         71|        178|    0.7086914579|        205|01:47:37|+0.85|0.90|0.1823|
+|x|          3|         71|        178|    0.7105549425|        272|01:47:03|+0.86|0.90|0.1642|
+|-|          8|         10|        178|    0.7148096561|        339|01:47:30|+0.61|0.69|0.2179|
+|-|          4|          5|        178|    0.7177155515|        345|00:09:49|+0.89|0.91|0.0392|
+|!|          2|          5|        178|    0.7255998850|        349|00:06:31|+0.83|0.85|0.0598|
+|!|          7|          5|        178|    0.7240480781|        350|00:01:36|+0.85|0.87|0.0550|
+|-|          1|          1|        178|    0.7242019309|        352|00:03:19|   NA|  NA|    NA|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best-so-far configuration:         178    mean value:     0.7242019309
+Description of the best-so-far configuration:
+    .ID.       lr weight_decay  dropout hidden_size .PARENT.
+178  178 0.000435      1.7e-05 0.253411         256      168
+
+# 2025-02-20 05:48:09 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+178 0.000435      1.7e-05 0.253411         256
+# 2025-02-20 05:48:09 AST: Iteration 5 of 5
+# experimentsUsedSoFar: 1241
+# remainingBudget: 259
+# currentBudget: 259
+# nbConfigurations: 26
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|         10|         26|        244|    0.7077044845|         26|00:42:36|   NA|  NA|    NA|
+|x|          8|         26|        244|    0.7014636397|         51|00:40:52|+0.79|0.90|0.1427|
+|x|          7|         26|        244|    0.6961739063|         76|00:40:59|+0.67|0.78|0.1806|
+|x|          9|         26|        244|    0.7043636590|        101|00:41:16|+0.65|0.74|0.2193|
+|-|          6|          7|        242|    0.7054149032|        126|00:41:02|+0.15|0.32|0.6868|
+|=|          1|          7|        244|    0.7042297423|        132|00:09:45|+0.14|0.28|0.7086|
+|-|          2|          4|        244|    0.7046054261|        138|00:09:52|+0.03|0.17|0.7608|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best configuration for the instances in this race: 244
+Best-so-far configuration:         178    mean value:     0.7281515241
+Description of the best-so-far configuration:
+    .ID.       lr weight_decay  dropout hidden_size .PARENT.
+178  178 0.000435      1.7e-05 0.253411         256      168
+
+# 2025-02-20 09:34:35 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+178 0.000435      1.7e-05 0.253411         256
+244 0.001493      2.0e-05 0.257422         256
+242 0.000615      3.3e-05 0.256417         256
+258 0.001181      3.0e-05 0.247291         256
+# 2025-02-20 09:34:35 AST: Iteration 6 of 6
+# experimentsUsedSoFar: 1379
+# remainingBudget: 121
+# currentBudget: 121
+# nbConfigurations: 14
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|         11|         14|        242|    0.7231007218|         14|00:23:06|   NA|  NA|    NA|
+|x|         10|         14|        242|    0.7211020589|         24|00:16:29|+0.09|0.55|0.6634|
+|x|          5|         14|        266|    0.7106739084|         37|00:21:19|+0.26|0.51|0.5756|
+|x|          8|         14|        244|    0.7127874345|         47|00:16:36|+0.31|0.48|0.5345|
+|-|          6|          6|        242|    0.7207886577|         57|00:17:17|-0.13|0.09|1.0060|
+|=|          9|          6|        242|    0.7192907731|         59|00:03:36|-0.08|0.10|0.9505|
+|=|          1|          6|        244|    0.7125723532|         61|00:03:29|-0.10|0.05|0.9524|
+|=|          3|          6|        258|    0.7135188729|         66|00:08:51|-0.07|0.07|0.9115|
+|=|          4|          6|        244|    0.7146618896|         71|00:08:41|-0.01|0.10|0.8640|
+|=|          7|          6|        244|    0.7117551446|         73|00:03:29|-0.01|0.09|0.8556|
+|=|          2|          6|        244|    0.7113100886|         75|00:03:23|+0.03|0.12|0.8290|
+|=|         12|          6|        244|    0.7148549755|         81|00:10:35|+0.03|0.11|0.8227|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best-so-far configuration:         244    mean value:     0.7148549755
+Description of the best-so-far configuration:
+    .ID.       lr weight_decay  dropout hidden_size .PARENT.
+244  244 0.001493        2e-05 0.257422         256      178
+
+# 2025-02-20 11:51:31 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+244 0.001493      2.0e-05 0.257422         256
+258 0.001181      3.0e-05 0.247291         256
+242 0.000615      3.3e-05 0.256417         256
+273 0.001240      4.4e-05 0.247138         256
+# 2025-02-20 11:51:31 AST: Iteration 7 of 7
+# experimentsUsedSoFar: 1460
+# remainingBudget: 40
+# currentBudget: 40
+# nbConfigurations: 6
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|         13|          6|        244|    0.7064878345|          6|00:11:03|   NA|  NA|    NA|
+|x|          9|          6|        258|    0.7076176405|          8|00:03:38|+0.60|0.80|0.1742|
+|x|         10|          6|        244|    0.7143750787|         10|00:03:34|+0.58|0.72|0.1697|
+|x|         12|          6|        258|    0.7107529044|         12|00:03:34|+0.59|0.69|0.2237|
+|-|          3|          4|        258|    0.7049326897|         14|00:03:38|+0.20|0.36|0.5282|
+|.|          7|          4|        258|    0.7086920937|         14|00:00:00|+0.21|0.34|0.5794|
+|.|          8|          4|        258|    0.7158443247|         14|00:00:00|+0.16|0.28|0.6864|
+|.|         11|          4|        258|    0.7169229984|         14|00:00:00|+0.10|0.21|0.7027|
+|.|          2|          4|        258|    0.7175180780|         14|00:00:00|+0.10|0.20|0.6963|
+|.|          1|          4|        258|    0.7138686121|         14|00:00:00|+0.03|0.12|0.7285|
+|.|          4|          4|        258|    0.7153375203|         14|00:00:00|-0.00|0.09|0.7383|
+|.|          6|          4|        258|    0.7160972009|         14|00:00:00|-0.04|0.04|0.7691|
+|.|          5|          4|        258|    0.7143304440|         14|00:00:00|-0.02|0.06|0.7585|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best configuration for the instances in this race: 258
+Best-so-far configuration:         244    mean value:     0.7142113493
+Description of the best-so-far configuration:
+    .ID.       lr weight_decay  dropout hidden_size .PARENT.
+244  244 0.001493        2e-05 0.257422         256      178
+
+# 2025-02-20 12:17:00 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+244 0.001493      2.0e-05 0.257422         256
+258 0.001181      3.0e-05 0.247291         256
+242 0.000615      3.3e-05 0.256417         256
+273 0.001240      4.4e-05 0.247138         256
+# 2025-02-20 12:17:00 AST: Iteration 8 of 8
+# experimentsUsedSoFar: 1474
+# remainingBudget: 26
+# currentBudget: 26
+# nbConfigurations: 5
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|x|         14|          5|        278|    0.6918677092|          5|00:08:56|   NA|  NA|    NA|
+|x|          6|          5|        273|    0.7063291073|          6|00:01:49|-0.50|0.25|1.1163|
+|x|          3|          5|        273|    0.7066039642|          7|00:01:45|-0.30|0.13|1.0357|
+|x|         10|          5|        244|    0.7220347673|          8|00:01:50|-0.28|0.04|0.9817|
+|=|          7|          5|        244|    0.7147467017|          9|00:01:48|-0.22|0.02|0.9617|
+|=|          1|          5|        244|    0.7079328001|         10|00:02:05|-0.15|0.04|0.9226|
+|=|          2|          5|        244|    0.7077794756|         11|00:01:49|-0.07|0.08|0.8518|
+|=|          8|          5|        244|    0.7062098905|         12|00:01:49|+0.00|0.13|0.7934|
+|=|         12|          5|        244|    0.7115030951|         13|00:01:45|-0.06|0.06|0.8439|
+|=|         11|          5|        244|    0.7165367067|         14|00:01:55|-0.05|0.06|0.8232|
+|=|          5|          5|        244|    0.7137954831|         15|00:01:47|-0.02|0.07|0.8240|
+|=|         13|          5|        244|    0.7131865124|         16|00:01:47|-0.02|0.06|0.8288|
+|=|          9|          5|        244|    0.7143977743|         17|00:01:50|-0.04|0.04|0.8281|
+|=|          4|          5|        244|    0.7151932078|         18|00:01:48|-0.04|0.04|0.8304|
+|=|         15|          5|        244|    0.7160382390|         23|00:09:00|-0.05|0.02|0.8317|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best-so-far configuration:         244    mean value:     0.7160382390
+Description of the best-so-far configuration:
+    .ID.       lr weight_decay  dropout hidden_size .PARENT.
+244  244 0.001493        2e-05 0.257422         256      178
+
+# 2025-02-20 12:58:53 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+244 0.001493      2.0e-05 0.257422         256
+258 0.001181      3.0e-05 0.247291         256
+278 0.001458      7.0e-06 0.256700         256
+242 0.000615      3.3e-05 0.256417         256
+# 2025-02-20 12:58:53 AST: Stopped because there is not enough budget left to race more than the minimum (4).
+# You may either increase the budget or set 'minNbSurvival' to a lower value.
+# Iteration: 9
+# nbIterations: 9
+# experimentsUsedSoFar: 1497
+# timeUsed: 0
+# remainingBudget: 3
+# currentBudget: 3
+# number of elites: 4
+# nbConfigurations: 4
+# Total CPU user time: 1617497, CPU sys time: 9952.172, Wall-clock time: 171028
+# 2025-02-20 12:58:53 AST: Starting post-selection:
+# Configurations selected: 244, 258, 278.
+# Pending instances: 0, 0, 0.
+# Seed: 2001503663
+# Configurations: 3
+# Available experiments: 3
+# minSurvival: 1
+# Markers:
+     x No test is performed.
+     c Configurations are discarded only due to capping.
+     - The test is performed and some configurations are discarded.
+     = The test is performed but no configuration is discarded.
+     ! The test is performed and configurations could be discarded but elite configurations are preserved.
+     . All alive configurations are elite and nothing is discarded.
+
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+| |   Instance|      Alive|       Best|       Mean best| Exp so far|  W time|  rho|KenW|  Qvar|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+|.|          4|          3|        278|    0.7023838162|          0|00:00:00|   NA|  NA|    NA|
+|.|         12|          3|        278|    0.7052092552|          0|00:00:00|-0.50|0.25|0.6746|
+|.|          7|          3|        278|    0.6931731304|          0|00:00:00|+0.00|0.33|0.6190|
+|.|          1|          3|        278|    0.6973953247|          0|00:00:00|-0.25|0.06|0.8473|
+|.|         15|          3|        278|    0.7018841028|          0|00:00:00|-0.20|0.04|0.7874|
+|.|          9|          3|        278|    0.6987354954|          0|00:00:00|-0.07|0.11|0.6959|
+|.|          6|          3|        278|    0.7062902451|          0|00:00:00|-0.10|0.06|0.7124|
+|.|          8|          3|        278|    0.7121816799|          0|00:00:00|-0.12|0.02|0.7483|
+|.|         13|          3|        278|    0.7101309299|          0|00:00:00|-0.08|0.04|0.7385|
+|.|          2|          3|        278|    0.7130073369|          0|00:00:00|-0.10|0.01|0.7406|
+|.|         14|          3|        278|    0.7110855525|          0|00:00:00|-0.06|0.03|0.7272|
+|.|          3|          3|        278|    0.7124024083|          0|00:00:00|-0.08|0.01|0.7265|
+|.|         10|          3|        278|    0.7167981496|          0|00:00:00|-0.08|0.01|0.7206|
+|.|         11|          3|        278|    0.7210436293|          0|00:00:00|-0.07|0.01|0.7118|
+|.|          5|          3|        278|    0.7199593862|          0|00:00:00|-0.05|0.02|0.6993|
+|=|         16|          3|        244|    0.7178585269|          3|00:05:28|-0.06|0.00|0.7067|
++-+-----------+-----------+-----------+----------------+-----------+--------+-----+----+------+
+Best-so-far configuration:         244    mean value:     0.7178585269
+Description of the best-so-far configuration:
+    .ID.       lr weight_decay  dropout hidden_size .PARENT.
+244  244 0.001493        2e-05 0.257422         256      178
+
+# 2025-02-20 13:04:22 AST: Elite configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+244 0.001493        2e-05 0.257422         256
+258 0.001181        3e-05 0.247291         256
+278 0.001458        7e-06 0.256700         256
+# Total CPU user time: 1620609, CPU sys time: 9971.714, Wall-clock time: 171356.6
+# Best configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+          lr weight_decay  dropout hidden_size
+244 0.001493        2e-05 0.257422         256
+258 0.001181        3e-05 0.247291         256
+278 0.001458        7e-06 0.256700         256
+# Best configurations as commandlines (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+244 --lr 0.001493 --weight_decay 0.00002 --dropout 0.257422 --hidden_size 256
+258 --lr 0.001181 --weight_decay 0.00003 --dropout 0.247291 --hidden_size 256
+278 --lr 0.001458 --weight_decay 0.000007 --dropout 0.2567 --hidden_size 256
+
+
+# Testing of elite configurations: 1 
+# Testing iteration configurations: FALSE 
+# 2025-02-20 13:04:22 AST: No test instances, skip testing
