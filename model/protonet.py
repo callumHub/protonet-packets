@@ -9,20 +9,31 @@ from scipy.integrate import quad
 import numpy as np
 
 from model.factory import register_model
-from utils.data import KDEDist
+
 from utils.mahal_utils import Mahalanobis
+import utils.experiment_context
 
 '''
 return list of univariate gaussian kde for each class
 use to get p values by with pdf f'n
 '''
 def get_kde(rel_mahalanobis, target_inds, n_way):
-    class_kernel_densities = [0 for _ in range(n_way)]
-    for idx in range(n_way):#target_inds.squeeze().T[0]:
-        # TODO: Sometimes gives singular covariance matrix error, must handle
-        class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu(), bw_method='scott')
+    if utils.experiment_context.bandwidth_experiment:
+        print("running with bandwidth: ", utils.experiment_context.bandwidth_value)
+        class_kernel_densities = [0 for _ in range(n_way)]
+        for idx in range(n_way):  # target_inds.squeeze().T[0]:
+            # TODO: Sometimes gives singular covariance matrix error, must handle
+            class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu(),
+                                                       bw_method=utils.experiment_context.bandwidth_value)
 
-    return class_kernel_densities
+        return class_kernel_densities
+    else:
+        class_kernel_densities = [0 for _ in range(n_way)]
+        for idx in range(n_way):#target_inds.squeeze().T[0]:
+            # TODO: Sometimes gives singular covariance matrix error, must handle
+            class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu(), bw_method=0.025)
+
+        return class_kernel_densities
 
 def euclidean_dist(x, y):
     # x: N x D
@@ -124,7 +135,6 @@ class Protonet(nn.Module):
         # use calibrate to compute rel_mahal (if using sup, ood scores at test time will be higher
         m_k_rel = torch.min(self.rmd.relative_mahalanobis_distance(z_cal), dim=1).values.view(n_class, n_cal)
 
-
         # Obtain n_class Gaussian KDE's for each class
         g_k = get_kde(m_k_rel, target_inds, n_class)
         return g_k # Used in alg 3!
@@ -164,6 +174,7 @@ class Protonet(nn.Module):
         _, y_hat = log_p_y.max(2)
 
         rel_d = torch.min(self.rmd.relative_mahalanobis_distance(z), dim=1).values.view(n_class, n_query)
+
         pvals = []
         mid_pvals = []
         correct_preds = 0
@@ -173,7 +184,12 @@ class Protonet(nn.Module):
                 predicted_class = y_hat.tolist()[i][index]
                 if i == predicted_class: correct_preds += 1
                 r = rel_d.tolist()[predicted_class][index]
-                p_val = quad(g_k[predicted_class].pdf, r, np.inf)[0] # Integrate pdf to get p values
+                max_val = g_k[predicted_class].dataset.max()
+                bw = g_k[predicted_class].factor
+                #p_val = quad(g_k[predicted_class].pdf, r, max_val + bw, limit=50000, epsabs=0.1, epsrel=0.1)[
+                #    0]  # Integrate pdf to get p values
+                grid = np.linspace(r, max_val+bw, 50000)
+                p_val = np.trapz(g_k[predicted_class].pdf(grid), grid, dx=bw/2)
                 mid_pvals.append(1-p_val) # confidence score is 1 minus the p value
             pvals.append(mid_pvals)
 
@@ -194,14 +210,16 @@ class Protonet(nn.Module):
             return pvals, torch.tensor(0.1), torch.tensor(0.01), torch.tensor(0.1), torch.tensor(0.01) # Dummy vals
 
     def ood_score(self, sample, g_k):
-        n_way = len(g_k)
+        n_class = len(g_k)
         n_examples = sample.size(0)
         z = self.encoder.forward(sample)
         z = z.unsqueeze(0)
-        dists = self.rmd.diag_mahalanobis_distance(z)
+        dists = self.rmd.diag_mahalanobis_distance(z).view(1, n_examples, -1)
         log_p_y = F.log_softmax(-dists, dim=1).view(n_examples, -1)
         _, y_hat = log_p_y.max(1)
+
         rel_d = torch.min(self.rmd.relative_mahalanobis_distance(z), dim=1).values.view(-1, n_examples)
+
         pvals = []
         mid_pvals = []
         correct_preds = 0
@@ -210,7 +228,12 @@ class Protonet(nn.Module):
         for index in range(len(y_hat.tolist())):
             predicted_class = y_hat.tolist()[index]
             r = rel_d.tolist()[0][index]
-            p_val = quad(g_k[predicted_class].pdf, r, np.inf)[0]  # Integrate pdf to get p values
+            max_val = g_k[predicted_class].dataset.max()
+            bw = g_k[predicted_class].factor
+            # TODO: 1/5000 times, the integral is divergent or slowly convergent => error, add try catch somewhere to handle.
+            #p_val = quad(g_k[predicted_class].pdf, r, max_val+bw, limit=50000000, epsabs=1e-10, epsrel=1e-10)[0]  # Integrate pdf to get p values
+            grid = np.linspace(r, max_val + bw, 500000)
+            p_val = np.trapz(g_k[predicted_class].pdf(grid), grid, dx=bw/4)
             mid_pvals.append(1 - p_val)  # confidence score is 1 minus the p value
         pvals.append(mid_pvals)
         return pvals

@@ -21,9 +21,9 @@ UT_MOBILE_CLASS_MAP = {
                 "DRIVE": 11, "DROPBOX": 12, "GMAIL": 13, "MESSENGER": 14, "HANGOUT": 15
             }
 
-OG_CLASS_MAP = {"C2": 0, "CHAT": 1, "FILE_TRANSFER": 2, "STREAMING": 3, "VOIP": 4} # OG VPN Data Classses
+OG_CLASS_MAP = {"C2": 0, "CHAT": 1, "STREAMING": 2, "VOIP": 3,  "FILE_TRANSFER": 4} # OG VPN Data Classses
 COMBINED_CLASS_MAP = {"C2": 0, "CHAT": 1, "FILE_TRANSFER": 2, "STREAMING": 3, "VOIP": 4, "SPOTIFY": 5}
-
+ONE_OUT_CLASS_MAP = {"C2": 0, "CHAT": 1, "STREAMING": 2, "VOIP": 3 }
 class VPNDataTransforms(object):
     def __init__(self, splits, n_classes, full_path=None):
         self.data_path = os.path.join(os.getcwd(),
@@ -40,13 +40,13 @@ class VPNDataTransforms(object):
         self.data.data = self.data.data.apply(lambda x: torch.tensor(x, dtype=torch.float32))
         if n_classes == 5: # OG VPN DATA
             self.class_map = OG_CLASS_MAP
-            self.class_list = list(self.class_map.keys())
         elif n_classes == 6:
             self.class_map = COMBINED_CLASS_MAP
-            self.class_list = list(self.class_map.keys())
+        elif n_classes == 4:
+            self.class_map = ONE_OUT_CLASS_MAP
         else: # UTMOBILE CLASSLIST
             self.class_map = UT_MOBILE_CLASS_MAP
-            self.class_list = list(self.class_map.keys())
+        self.class_list = list(self.class_map.keys())
         self.out_dict = {}
         self.removed_classes = 0
 
@@ -81,13 +81,13 @@ def episode_sampler(data, n_query, n_support):
 
 
 class VPNDataset(Dataset):
-    def __init__(self, splits, n_classes, fp=None):
+    def __init__(self, splits, n_classes, n_sup, n_query, fp=None):
         if fp is not None: dicter = VPNDataTransforms(splits, n_classes, full_path=fp)
         else: dicter = VPNDataTransforms(splits, n_classes)
         dicter.make_dict()
         min_class = len(dicter.data.data[dicter.data["labels"] == dicter.data.labels.value_counts().keys()[-1]])  # VOIP is min class for OG one
         #print("length of the minimum class: ", min_class)  # DRIVE is min for utmobile
-        self.n_support = 5 if min_class > 8 else 3
+        self.n_support = n_sup if min_class > 8 else 3
         self.batch_size = min_class - self.n_support
         self.data = dicter.out_dict
         self.class_map = dicter.class_map
@@ -102,10 +102,10 @@ class VPNDataset(Dataset):
 
         return episode_sampler(self.data[key], self.batch_size, self.n_support)
 
-def load(splits, n_episodes, n_classes, n_way, fp=None):
+def load(splits, n_episodes, n_classes, n_way, n_sup, n_query, fp=None):
 
-    if fp is not None: ds = VPNDataset(splits, n_classes, fp=fp)
-    else: ds = VPNDataset(splits, n_classes)
+    if fp is not None: ds = VPNDataset(splits, n_classes, n_sup, n_query, fp=fp)
+    else: ds = VPNDataset(splits, n_classes, n_sup, n_query)
     n_classes = n_classes-ds.removed_classes
     n_way = n_way-ds.removed_classes
     sampler = EpisodicBatchSampler(n_classes, n_way, n_episodes)

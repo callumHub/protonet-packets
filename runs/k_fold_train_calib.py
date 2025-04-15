@@ -14,9 +14,19 @@ def main():
     ut_run_description = "ut_mobile_kfold_decreasing_fraction_64x64x64x64"
     run_description = "vpn_3hidden"
     params = HyperParameterStore().get_model_params(run_description, "vpn_models")
-
+    params.run_type = "decreasing_epochs_outputs_10_run_avg"
 
     run_decrease_fraction(VPN_TEMPLATE,True, params)
+
+    run_description = "vpn_3h_high_dropout"
+    params = HyperParameterStore().get_model_params(run_description, "vpn_models")
+    params.run_type = "decreasing_epochs_outputs_10_run_avg_high_dropout"
+    run_decrease_fraction(VPN_TEMPLATE, True, params)
+
+    run_description = "vpn_1h"
+    params = HyperParameterStore().get_model_params(run_description, "vpn_models")
+    params.run_type = "decreasing_epochs_outputs_10_run_avg_1h"
+    run_decrease_fraction(VPN_TEMPLATE, True, params)
 # TODO: UTMobile requires a change of the class map in vpn_packets.py Uncouple this
 def run_decrease_fraction(path, save, params: ParameterStore):
     """
@@ -27,18 +37,22 @@ def run_decrease_fraction(path, save, params: ParameterStore):
     :return: min_max_normalized/run{i}/frac_{percent_train}, where each run{i} (i in range(0,num_runs)):
     Contains decreasing fractions of test, train, cal.jsonl stored in: frac_y, (y in {10*j|0<=j<num_fractions})
     """
-    num_runs = 1
-    num_fractions = 1
+    num_runs = 10
+    num_fractions = 30
     accs, calibers, micro_f1s, confusions = [], [], [], []
     for i in range(num_runs):
+        params.episodes = 20500
         test_accs, test_calibers, test_micro_f1s, test_confusions = [], [], [], []
         for j in range(num_fractions): # start from 1, 80-20 split too small for my processed data - note from callum on dec 2
+            params.episodes -= 500
+            print(f"Training with {params.episodes} episodes")
             percent_train = int(80-10*j) # fraction from inner loop iterator
             if j == 8: percent_train=5
-            print(f"Testing with {percent_train}% of training data, run {i}")
+            #print(f"Testing with {percent_train}% of training data, run {i}")
             # format datapath based on current iterator status
             #fp = f"../../enc-vpn-uncertainty-class-repl/processed_data/stable_cal_fraction/min_max_normalized/run{i}/frac_{percent_train}"
             fp = path.format(i=i, percent_train=percent_train)
+            fp = path.format(i=i, percent_train=80) # TODO: COMMENT FOR K FOLD, THIS IS FOR TESTING EPISODE REDUCTION
             # runs and stores stats.
             test_acc, test_caliber, test_micro_f1, confusion = train_eval_with_data_path(fp, params)
             test_accs.append(test_acc)
@@ -96,7 +110,7 @@ def run_train_k_folded(num_folds=3, num_runs=10):
         for j in range(num_folds):
             print("Testing on fold ", j)
             fp = f"../../enc-vpn-uncertainty-class-repl/processed_data/{num_folds}_fold/run{i}/fold{j}"
-            test_accs, test_calibers, test_micro_f1s, confusion = train_eval_with_data_path(fp, n_classes=5, n_way=5)
+            test_accs, test_calibers, test_micro_f1s, confusion = train_eval_with_data_path(fp, HyperParameterStore().get_model_params("vpn_3h", "vpn_models"))
     print("**** FINISHED ****")
     print("Test accuracies: ", test_accs)
     print("Test calibration errors: ", test_calibers)

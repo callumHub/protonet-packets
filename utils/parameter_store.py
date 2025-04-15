@@ -13,8 +13,12 @@ class ParameterStore:
     weight_decay: float
     hidden_dim: int
     hidden_layers: int
+    epochs: int = 1
+    episodes: int = 20000
 
     z_dim: int = 64
+    n_support: int = 5
+    n_query: int = 30
 
 
 class HyperParameterStore:
@@ -49,6 +53,15 @@ class HyperParameterStore:
                 "vpn_3h_high_dropout": ParameterStore(run_type="vpn_3h_high_dropout", n_classes=5, x_dim=128, n_way=5,
                                                       dropout=0.33508, lr=0.003102, weight_decay=0.004199,
                                                       hidden_dim=64, hidden_layers=3),
+                "vpn_1h": ParameterStore(run_type="vpn_1h", n_classes=5, x_dim=128, n_way=5,
+                                         dropout=0.32884, lr=0.000233, weight_decay=0.001078,
+                                         hidden_dim=64, hidden_layers=1),
+                "vpn_basic": ParameterStore(run_type="vpn_basic", n_classes=5, x_dim=128, n_way=5,
+                                              dropout=0.25,
+                                              lr=0.0005, weight_decay=0, hidden_dim=64, hidden_layers=3),
+                "vpn_min_ece": ParameterStore(run_type="vpn_min_ece", n_classes=5, x_dim=128, n_way=5,
+                                            dropout=0.414646,
+                                            lr=0.000669, weight_decay=0.00168, hidden_dim=64, hidden_layers=3),
             }
         }
 

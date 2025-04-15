@@ -32,8 +32,8 @@ class Mahalanobis(object):
         if diagonal:
             # fuckin multipy together! **debugger+tries every dimension combination*** =>
             # **transposes 0 & 1** => ***multiplies *** => :0
-            radicand = torch.matmul(torch.matmul((z-mu_k).transpose(0,1), torch.linalg.pinv(sigma)),
-                            (z-mu_k).transpose(0,1).mT).diagonal(dim1=1, dim2=2).T
+            radicand = torch.matmul(torch.matmul((z - mu_k).transpose(0, 1), torch.linalg.pinv(sigma)),
+                                    (z - mu_k).transpose(0, 1).mT).diagonal(dim1=1, dim2=2).T
             return torch.sqrt(radicand)
         else:
             return torch.matmul(torch.matmul((z-mu_k), torch.linalg.pinv(sigma)),
@@ -54,6 +54,24 @@ class Mahalanobis(object):
         return md_k - md_0
 
     def diag_mahalanobis_distance(self, z_test):
+        """
+        Todo: This loop here is slow af, should try to use batched tensor operations as in other distance calcs
+        :param z_test:
+        :return:
+        """
+        '''
+        z = z_test.view(z_test.size(0)*z_test.size(1), -1)
+        features = z.view(z.size(0), z.size(1), -1)
+        features = torch.mean(features, 2).unsqueeze(0)
+        md_k = []
+
+        for clazz in range(self.n_class):
+            score = self.mahalanobis_distance(features, self._get_class_means()[clazz], self._get_class_sigma(), True)
+            md_k.append(score.view(-1, 1))
+
+        return torch.cat(md_k, 1)
+        return dk
+        '''
         diag_sigma_k = torch.diag_embed(self._get_class_sigma_k().diagonal(dim1=-2, dim2=-1))
         dk = self.mahalanobis_distance(z_test, self._get_class_means(), diag_sigma_k, diagonal=True)
         return dk

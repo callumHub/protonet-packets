@@ -2,8 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 def main():
     frac = 80
-    run_type = "ut_calib_ood_before"
-    run_type = "ut_calib_ood_after"
+    train_state = "After"
+    if train_state == "Before":
+        run_type = "ut_calib_ood_before"
+    else:
+        run_type = "ut_calib_ood_after"
     #run_type = "baseline_pvals"
     pvals = np.load(f"../runs/eval_outs/{run_type}/after_train_pvals_og_to_ut_frac{frac}.npy")
     #mean_pvals = np.load(f"../runs/eval_outs/{run_type}/total_pval_og_to_ut.npy")
@@ -15,10 +18,10 @@ def main():
     run_type = "vpn_calib_ood"
     pvals_2 = np.load(f"../runs/eval_outs/{run_type}/pvals_og_to_ut_frac{frac}.npy")[0]
 
-    plot_pvals(pvals_1, pvals_2)
+    plot_pvals(pvals_1, pvals_2, train_state)
 
 
-def plot_pvals(pvals_1, pvals_2):
+def plot_pvals(pvals_1, pvals_2, train_state):
     # Indices for bar positions
     indices = np.arange(len(pvals_1))
     indices_2 = np.arange(len(pvals_2))
@@ -53,7 +56,7 @@ def plot_pvals(pvals_1, pvals_2):
     plt.xticks([1, 2], categories)  # Set x-axis ticks to categories
     plt.xlabel('Datasets')
     plt.ylabel('OOD Score')
-    plt.title('Comparison of OOD Scores (After Retraining)')
+    plt.title(f'Comparison of OOD Scores ({train_state} Retraining)')
     plt.legend()
 
     # Show plot

@@ -11,7 +11,7 @@ import torch
 import utils.model as model_utils
 import os
 #from run_calibrate import calibrate_and_test
-from parameter_store import HyperParameterStore, ParameterStore
+from utils.parameter_store import HyperParameterStore, ParameterStore
 
 def main():
     # vpn path
@@ -27,7 +27,7 @@ def main():
 
 def run_train(params: ParameterStore, full_path=None):
     # initialize data loaders
-    data_loader, val_loader = init_dataloaders(full_path, params.n_classes, params.n_way)
+    data_loader, val_loader = init_dataloaders(full_path, params)
     # initialize protonet
     accuracy, loss, pnet = train_pnet(data_loader, val_loader, params)
     print(f"Accuracy: {accuracy}, Loss: {loss}")
@@ -38,13 +38,13 @@ def run_train(params: ParameterStore, full_path=None):
     return accuracy, loss, pnet
 
 
-def init_dataloaders(full_path, n_classes, n_way):
+def init_dataloaders(full_path, params):
     if full_path is not None:
-        data_loader = load("train", 20000, n_classes, n_way, fp=full_path + "/train.jsonl")
-        val_loader = load("train", 50, n_classes, n_way, fp=full_path + "/train.jsonl")
+        data_loader = load("train", params.episodes, params.n_classes, params.n_way, params.n_support, params.n_query, fp=full_path + "/train.jsonl")
+        val_loader = load("train", 50, params.n_classes, params.n_way, params.n_support, params.n_query, fp=full_path + "/train.jsonl")
     else:
-        data_loader = load("train", 20000, n_classes, n_way)
-        val_loader = load("train", 50, n_classes, n_way)
+        data_loader = load("train", params.episodes, params.n_classes, params.n_way, params.n_support, params.n_query)
+        val_loader = load("train", 50, params.n_classes, params.n_way, params.n_support, params.n_query)
     return data_loader, val_loader
 
 
