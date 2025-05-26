@@ -13,7 +13,7 @@ from utils.parameter_store import HyperParameterStore
 from utils.data import sample_transform, save_stats
 from utils.model import load_model
 import time
-from run_train import run_train
+from runs.run_train import run_train
 UT_MOBILE_PATH_TEMPLATE = ("../../enc-vpn-uncertainty-class-repl/processed_data/ut_mobile_data/stable_cal_fraction/"
                            "min_max_normalized/run{}/frac_{}")
 OG_PATH_TEMPLATE = ("../../enc-vpn-uncertainty-class-repl/processed_data/stable_cal_fraction/"
@@ -150,6 +150,7 @@ def calibrate_and_ood_score(pnet, print_stats, use_cuda, n_classes, n_way, combi
     calibration_classes, g_k, pnet = calibrate(cal_path, n_classes, n_way, pnet, print_stats, use_cuda, n_sup, n_query)
     class_map = class_map
     if before_train:
+        #print("I AM NOT INCREMENTING BEFORE TRAIN, USUALLY INCREMENT, HERE BECAUSE TEST OOD ON SAME # CLASS DO NOT INCREMENT")
         n_classes = n_way = n_classes+1
     if ut_mobile:
         specific_class = ood_class

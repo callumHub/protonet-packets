@@ -34,4 +34,4 @@ def sample_transform(sample, cal_samples):
 def save_stats(data, name, run_desc):
    save_path = os.path.join(f"./eval_outs/{run_desc}")
    os.makedirs(save_path, exist_ok=True)
-   np.save(os.path.join(save_path, name+".npy"), np.array(data))
+   np.save(os.path.join(save_path, name+".npy"), np.asarray(data))

@@ -12,26 +12,31 @@ from model.factory import register_model
 
 from utils.mahal_utils import Mahalanobis
 import utils.experiment_context
-
+from KDEpy import bw_selection
 '''
 return list of univariate gaussian kde for each class
 use to get p values by with pdf f'n
 '''
-def get_kde(rel_mahalanobis, target_inds, n_way):
+def get_kde(rel_mahalanobis, target_inds, n_way) -> list[gaussian_kde]:
     if utils.experiment_context.bandwidth_experiment:
-        print("running with bandwidth: ", utils.experiment_context.bandwidth_value)
-        class_kernel_densities = [0 for _ in range(n_way)]
+        class_kernel_densities = []
+        class_bandwidths = [bw_selection.improved_sheather_jones(np.asarray(rel_mahalanobis[i]).reshape(-1, 1))
+                            for i in range(n_way)]
+        bandwidth = np.mean(class_bandwidths)
+        print('bandwidth:', bandwidth, " With std: ", np.std(class_bandwidths), " Max: ", np.max(class_bandwidths),
+              " Min: ", np.min(class_bandwidths)) # Consider using max instead of mean.
+
         for idx in range(n_way):  # target_inds.squeeze().T[0]:
             # TODO: Sometimes gives singular covariance matrix error, must handle
-            class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu(),
-                                                       bw_method=utils.experiment_context.bandwidth_value)
+            class_kernel_densities.append(gaussian_kde(rel_mahalanobis[idx].cpu(),
+                                                       bw_method=float(class_bandwidths[idx])))
 
         return class_kernel_densities
     else:
         class_kernel_densities = [0 for _ in range(n_way)]
         for idx in range(n_way):#target_inds.squeeze().T[0]:
             # TODO: Sometimes gives singular covariance matrix error, must handle
-            class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu(), bw_method=0.025)
+            class_kernel_densities[idx] = gaussian_kde(rel_mahalanobis[idx].cpu(), bw_method=utils.experiment_context.bandwidth_value)
 
         return class_kernel_densities
 
@@ -57,14 +62,15 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 
+
 class Protonet(nn.Module):
     def __init__(self, encoder):
         super(Protonet, self).__init__()
 
         self.encoder = encoder
         self.rmd = None
-
-    def loss(self, sample):
+        self.prototypes = None
+    def loss(self, sample, batch):
         xs = Variable(sample['xs'])  # support
         xq = Variable(sample['xq'])  # query
 
@@ -87,11 +93,18 @@ class Protonet(nn.Module):
 
         x = torch.cat([xs.view(n_class * n_support, *xs.size()[2:]),
                        xq.view(n_class * n_query, *xq.size()[2:])], 0)
+
         z = self.encoder.forward(x)
         z_dim = z.size(-1)
+        z_sup = z[:n_class * n_support].view(n_class, n_support, z_dim)
 
-        z_proto = z[:n_class * n_support].view(n_class, n_support, z_dim).mean(1) # Remove mean if using mahal
+        z_proto = z_sup.mean(1) # Remove mean if using mahal
+
+
         zq = z[n_class * n_support:]
+        # RECTIFY PROTOTYPES: (removed to test during calibrate
+        #if batch > 150:
+        #    z_proto = self.rectify_prototypes(query_features=zq.view(n_class, n_query, z_dim), support_features=z_sup, prototypes=z_proto)
 
         dists = euclidean_dist(zq, z_proto)
         log_p_y = F.log_softmax(-dists, dim=1).view(n_class, n_query, -1)
@@ -130,8 +143,11 @@ class Protonet(nn.Module):
         z_dim = z.size(-1)
 
         z_support = z[:n_class * n_support].view(n_class, n_support, z_dim)
+        # TODO: Add test for rectify during calibrate
+
         z_cal = z[n_class * n_support:].view(n_class, n_cal, z_dim)
-        self.rmd = Mahalanobis(z_support) # Now compute mahalanobis # USE support to set mahal vars
+        #bias_diminish = [self, z_cal]
+        self.rmd = Mahalanobis(z_support)#, bias_diminish) # Now compute mahalanobis # USE support to set mahal vars
         # use calibrate to compute rel_mahal (if using sup, ood scores at test time will be higher
         m_k_rel = torch.min(self.rmd.relative_mahalanobis_distance(z_cal), dim=1).values.view(n_class, n_cal)
 
@@ -185,10 +201,11 @@ class Protonet(nn.Module):
                 if i == predicted_class: correct_preds += 1
                 r = rel_d.tolist()[predicted_class][index]
                 max_val = g_k[predicted_class].dataset.max()
+                min_val = g_k[predicted_class].dataset.min()
                 bw = g_k[predicted_class].factor
                 #p_val = quad(g_k[predicted_class].pdf, r, max_val + bw, limit=50000, epsabs=0.1, epsrel=0.1)[
                 #    0]  # Integrate pdf to get p values
-                grid = np.linspace(r, max_val+bw, 50000)
+                grid = np.linspace(r, max_val+(max_val-min_val)*0.1, 5000)
                 p_val = np.trapz(g_k[predicted_class].pdf(grid), grid, dx=bw/2)
                 mid_pvals.append(1-p_val) # confidence score is 1 minus the p value
             pvals.append(mid_pvals)
@@ -229,14 +246,47 @@ class Protonet(nn.Module):
             predicted_class = y_hat.tolist()[index]
             r = rel_d.tolist()[0][index]
             max_val = g_k[predicted_class].dataset.max()
-            bw = g_k[predicted_class].factor
-            # TODO: 1/5000 times, the integral is divergent or slowly convergent => error, add try catch somewhere to handle.
+            min_val = g_k[predicted_class].dataset.min()
             #p_val = quad(g_k[predicted_class].pdf, r, max_val+bw, limit=50000000, epsabs=1e-10, epsrel=1e-10)[0]  # Integrate pdf to get p values
-            grid = np.linspace(r, max_val + bw, 500000)
-            p_val = np.trapz(g_k[predicted_class].pdf(grid), grid, dx=bw/4)
+            grid = torch.linspace(r, max_val+10*g_k[predicted_class].factor, 7500000)
+            p_val = torch.trapz(torch.as_tensor(g_k[predicted_class].pdf(grid)), torch.as_tensor(grid)).item()
             mid_pvals.append(1 - p_val)  # confidence score is 1 minus the p value
         pvals.append(mid_pvals)
         return pvals
+
+    @staticmethod
+    def rectify_prototypes(query_features: torch.Tensor, support_features: torch.Tensor, prototypes: torch.Tensor) -> torch.Tensor:
+        device = query_features.device
+        n_classes = query_features.size(0)
+        n_support = support_features.size(1)
+        n_query = query_features.size(1)
+        support_target_inds = torch.arange(0, n_classes).view(n_classes, 1, 1).expand(n_classes, n_support,
+                                                                      1).long().squeeze()
+        support_target_inds = Variable(support_target_inds, requires_grad=False)
+        one_hot_support_labels = nn.functional.one_hot(support_target_inds, n_classes).view(n_classes*n_support, -1).to(device)
+        average_support_query_shift = support_features.mean(dim=1, keepdim=True) -\
+            query_features.mean(dim=1, keepdim=True)
+        query_features = query_features + average_support_query_shift
+        #support_logits = (-euclidean_dist(support_features.view(n_classes*n_support, -1), prototypes)).exp().to(device)
+        #query_logits = (-euclidean_dist(query_features.view(n_classes*n_query, -1), prototypes)).exp().to(device)
+        #support_logits = support_logits.clamp(min=0.1, max=10000) # NEW FROM ME, but why do I need to handle here and not in easyFSL?
+        #query_logits = query_logits.clamp(min=0.1, max=10000) # NEW FROM ME
+        support_logits = (-euclidean_dist(support_features.view(n_classes * n_support, -1), prototypes)).exp().to(device)
+        query_logits = (-euclidean_dist(query_features.view(n_classes * n_query, -1), prototypes)).exp().to(device)
+        one_hot_query_pred = nn.functional.one_hot(query_logits.argmax(-1), n_classes).view(n_classes*n_query, -1)
+
+        normalization_vector = (one_hot_support_labels*support_logits).sum(0) +\
+                               (one_hot_query_pred*query_logits).sum(0).unsqueeze(0) # [1, n_classes]
+        normalization_vector = normalization_vector.clamp(min=0.00001)
+
+        support_reweighting = (one_hot_support_labels*support_logits) / normalization_vector # [n_sup, n_classes]
+        query_reweighting = (one_hot_query_pred*query_logits) / normalization_vector # [n_query, n_classes]
+
+        prototypes = (support_reweighting*one_hot_support_labels).t().matmul(support_features.view(n_classes*n_support, -1)) + \
+                     (query_reweighting*one_hot_query_pred).t().matmul(query_features.view(n_classes*n_query, -1))
+        return prototypes
+
+
 
 
 @register_model('protonet_lin')
@@ -257,7 +307,7 @@ def load_protonet_lin(**kwargs):
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hid_dim, z_dim),
-            Flatten()
+            Flatten(),
         )
     elif hidden_layers == 2:
         encoder = nn.Sequential(
@@ -279,6 +329,22 @@ def load_protonet_lin(**kwargs):
     elif hidden_layers == 0:
         encoder = nn.Sequential(
             nn.Linear(x_dim[0], z_dim)
+        )
+    elif hidden_layers == 4:
+        encoder = nn.Sequential(
+            nn.Linear(x_dim[0], hid_dim),
+            nn.ReLU(),
+            nn.Linear(hid_dim, hid_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid_dim, hid_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid_dim, hid_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid_dim, z_dim),
+            Flatten(),
         )
     else:
         encoder = None

@@ -1,4 +1,5 @@
-
+import copy
+from time import sleep
 
 from utils.parameter_store import HyperParameterStore
 from runs.run_calibrate import run_calibrate_and_ood_comparison, calibrate_and_test, save_test_stats
@@ -7,6 +8,13 @@ import sys
 import logging
 import os
 from data.vpn_packets import COMBINED_CLASS_MAP, OG_CLASS_MAP
+import torch
+import numpy as np
+np.random.seed(42)
+torch.manual_seed(1234)
+torch.cuda.manual_seed(1234)
+torch.cuda.manual_seed_all(1234)
+
 
 COMBINED_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood/all_classes" # coarse 4 class combined to 5
 OG_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood/no_ft" # coarse 4 class
@@ -14,7 +22,9 @@ OG_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood/
 #COMBINED_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood_type2/all_classes"
 #OG_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood_type2/no_chat"
 
-
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG,\
+                        datefmt='%Y-%m-%d %H:%M:%S', filename='model_experiments.log', filemode='a')
+logger = logging.getLogger(__name__)
 
 def cli_runner():
     logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG,\
@@ -103,14 +113,44 @@ def cli_runner():
 
 def main():
     import utils.experiment_context
-    utils.experiment_context.bandwidth_experiment = True
-    n_classes = 5
-    params = HyperParameterStore().get_model_params("vpn_3hidden", "vpn_models")
-    params.n_classes = n_classes
-    params.n_way = n_classes
-    decrease_z_dim_p_val_experiment(params, save_folder="bandwidth_test_vpn3h_ft_ood_low_bw_tight_bound",
-                                    ood_class="FILE_TRANSFER", iid_class="CHAT",
-                                    combined_path=COMBINED_PATH, one_out_path=OG_PATH)
+    # For this run I changed mean bandwidth to specific bw for each class
+    model_names = ["vpn_3hidden"]#, "vpn_1h", "vpn_min_ece", "vpn_3h_high_dropout"]
+    for model_name in model_names:
+        utils.experiment_context.bandwidth_experiment = True
+        n_classes = 5
+        params = HyperParameterStore().get_model_params(model_name, "vpn_models")
+        params.n_classes = n_classes
+        params.n_way = n_classes
+        params.use_target_model = False
+        pre_experiment_params = copy.deepcopy(params)
+        try:
+            decrease_z_dim_p_val_experiment(params, save_folder=f"no_target_ftood_30run_{model_name}_dcal_stabletrain",#_bd_with_target_model_update25",
+                                            ood_class="FILE_TRANSFER", iid_class="CHAT",
+                                        combined_path=COMBINED_PATH, one_out_path=OG_PATH)
+        except Exception as e:
+            logger.log(level=logging.WARNING, msg=f"FAILURE WITH MODEL: {model_name}")
+            logger.log(logging.ERROR, "The following exception occurred when running model: ", model_name)
+            logger.log(logging.ERROR, e)
+
+            break
+        print(f"*************************************** {model_name} done. *****************************************************\n\n")
+    exit(11)
+    while True:
+        try:
+            decrease_z_dim_p_val_experiment(params, save_folder="vpnbd_dcal_stabletrain_bd_with_target_model",
+                                            ood_class="SPOTIFY", iid_class="CHAT",
+                                            combined_path=COMBINED_PATH, one_out_path=OG_PATH)
+            break
+        except Exception as e:
+            print(e, flush=True)
+            sleep(1)
+            current_update_freq = params.update_frequency
+            if current_update_freq > params.episodes:
+                print("RAISING THE UPDATE FREQUENCY DID NOT HELP, UPDATE FREQUENCY == Num Episodes.")
+                break
+            print("NEURAL COLLAPSE: Incrementing Update Frequency By 100, (Current Update Frequency: {})".format(params.update_frequency))
+            pre_experiment_params.update_frequency = current_update_freq+100
+            params = copy.deepcopy(pre_experiment_params)
 
 
     pass
@@ -135,24 +175,31 @@ def main():
     '''
 def decrease_z_dim_p_val_experiment(params, ood_class: str, iid_class: str, save_folder, combined_path, one_out_path):
     import utils.experiment_context
-    run_number = 0
-    z_dims = [0.05, 0.025, 0.01, 0.005, 0.001, 0.00075, 0.0005, 0.00025]
-    while run_number < 10:
-        for i in range(len(z_dims)):
-            utils.experiment_context.bandwidth_value = z_dims[i]
-            pval_experiment_runner(params, run_number, run_desc=f"{save_folder}/bw_{z_dims[i]}/run_{run_number}/",
-                                   ood_class=ood_class, iid_class=iid_class, combined_path=combined_path,
-                                   one_out_path=one_out_path, class_map=OG_CLASS_MAP)
-        run_number += 1
+    fracs = [20, 30, 40, 50, 60, 70, 80]
+    #fracs = [50, 60, 70, 80] # Debug: instability happens at these fracs.
+    bws = [0.05]
+
+    for k in range(10):
+        for i in range(10):
+            for j in range(len(fracs)):
+                run_number = i+(k*10)
+                print("RUNNING WITH FRAC ", fracs[j])
+                combined_path = f"../../enc-vpn-uncertainty-class-repl/processed_data/decreasing_cal_stable_train/run{i}/frac_{fracs[j]}/all_classes"
+                one_out_path = f"../../enc-vpn-uncertainty-class-repl/processed_data/decreasing_cal_stable_train/run{i}/frac_{fracs[j]}/no_ft"
+                #utils.experiment_context.bandwidth_value = bws[0]
+                pval_experiment_runner(params, run_number, run_desc=f"{save_folder}/frac_{fracs[j]}/run_{run_number}/",
+                                       ood_class=ood_class, iid_class=iid_class, combined_path=combined_path,
+                                       one_out_path=one_out_path, class_map=OG_CLASS_MAP)
 
 
 def pval_experiment_runner(params, run_count, run_desc, ood_class: str, iid_class: str, combined_path: str,
                            one_out_path, class_map: dict):
+    protonet = None
     curr_classes = params.n_classes
     params.n_classes = curr_classes - 1
     print(params.n_classes)
     _, _, protonet = run_train(params, full_path=one_out_path)  # train without spotify data
-
+    protonet.eval()
     # get ood scores for ood data
     run_calibrate_and_ood_comparison(frac=80, run_desc_og=run_desc+"vpn_calib_ood_before", run_desc_ut=run_desc+"ut_calib_ood_before",
                                      combined_path=combined_path, cal_path=one_out_path, protonet=protonet,
@@ -162,6 +209,7 @@ def pval_experiment_runner(params, run_count, run_desc, ood_class: str, iid_clas
                                                  n_classes=params.n_classes, n_way=params.n_way,
                                                  full_path=combined_path, n_sup=params.n_support, n_query=params.n_query)
     save_test_stats(pre_train_output_values, run_desc+"before_retrain_utvpn_output")
+    torch.save(protonet.state_dict(), os.path.join(os.getcwd(), "outs", f"{params.run_type}_before.pt"))
     # Retrain with ood data
     params.n_classes = params.n_way = curr_classes
     _, _, protonet = run_train(params, full_path=combined_path)

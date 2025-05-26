@@ -12,11 +12,14 @@ from scipy.spatial.distance import mahalanobis
 
 
 class Mahalanobis(object):
-    def __init__(self, calibration_embeddings):
+    def __init__(self, calibration_embeddings, n_cal=None, bias_diminish=None):
+        super(Mahalanobis, self).__init__()
+        self.bias_diminish = bias_diminish
         self.calibration_embeddings = calibration_embeddings
-        self.n_class, self.n_calibrate, self.z_dim = calibration_embeddings.size()
+        self.n_class, _, self.z_dim = calibration_embeddings.size()
         self.mu_0 = self._get_whole_mean()
         self.sigma_0 = self._get_whole_sigma()
+
     def mahalanobis_distance(self, z, mu, sigma, diagonal=False):
         # embs = NXD
         # mu = MXD
@@ -83,13 +86,15 @@ class Mahalanobis(object):
         :return: mean embedding for each support class
         """
         mu_k = self.calibration_embeddings.mean(1, keepdim=True)
+        if self.bias_diminish is not None:
+            return self.bias_diminish.reshape(self.n_class, 1, self.z_dim)
         return mu_k
 
     def _get_whole_mean(self) -> torch.Tensor:
         """
         :return: Mean embedding of entire dataset
         """
-        mu_naught = self.calibration_embeddings.mean(1, keepdim=True).mean(0, keepdim=True)
+        mu_naught = self._get_class_means().mean(0, keepdim=True)
         return mu_naught
 
     def _get_class_sigma_k(self):

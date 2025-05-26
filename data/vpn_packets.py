@@ -109,7 +109,7 @@ def load(splits, n_episodes, n_classes, n_way, n_sup, n_query, fp=None):
     n_classes = n_classes-ds.removed_classes
     n_way = n_way-ds.removed_classes
     sampler = EpisodicBatchSampler(n_classes, n_way, n_episodes)
-    return DataLoader(ds, batch_sampler=sampler, shuffle=False, num_workers=0)
+    return DataLoader(ds, batch_sampler=sampler, shuffle=False, num_workers=0, pin_memory=True)
 
 
 

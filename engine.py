@@ -1,5 +1,5 @@
 from tqdm import tqdm
-
+import torch
 class Engine(object):
     '''
     Engine class entirely from Jake Snells prototypical network classifier
@@ -26,7 +26,7 @@ class Engine(object):
         }
 
         state['optimizer'] = state['optim_method'](state['model'].parameters(), **state['optim_config'])
-
+        display_loss = 10.0
         self.hooks['on_start'](state)
         while state['epoch'] < state['max_epoch'] and not state['stop']:
             state['model'].train()
@@ -35,22 +35,29 @@ class Engine(object):
 
             state['epoch_size'] = len(state['loader'])
             # REMOVED TQDM FOR IRACE
-            for sample in state['loader']:#tqdm(state['loader'], desc="Epoch {:d} train".format(state['epoch'] + 1)):
+            #pbar = tqdm(state['loader'])
+            # For no tqdm, replace pbar with: state["loader"]
+            for sample in state['loader']:
                 state['sample'] = sample
                 self.hooks['on_sample'](state)
 
                 state['optimizer'].zero_grad()
-                loss, state['output'] = state['model'].loss(state['sample'])
+                loss, state['output'] = state['model'].loss(state['sample'], state['batch'])
                 self.hooks['on_forward'](state)
-
+                if torch.isnan(loss):
+                    raise RuntimeError('Loss is NaN, episode: ', state['batch'])
                 loss.backward()
                 self.hooks['on_backward'](state)
+                torch.nn.utils.clip_grad_value_(state['model'].parameters(), 100) # NEW
 
                 state['optimizer'].step()
 
                 state['t'] += 1
                 state['batch'] += 1
                 self.hooks['on_update'](state)
+                #pbar.set_description("Epoch {:d} train, loss {:.2f}".format(state['epoch'] + 1, display_loss))
+
+
 
             state['epoch'] += 1
             state['batch'] = 0

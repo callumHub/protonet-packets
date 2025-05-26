@@ -5,6 +5,7 @@ from data.base import EpisodicBatchSampler
 from data.vpn_packets import VPNDataset, load
 #from data.forest_ct import load
 from model.protonet import Protonet, load_protonet_lin
+from model.protonet_with_target import ProtonetWithTarget
 from engine import Engine
 from torch.optim import Adam
 import torch
@@ -49,7 +50,11 @@ def init_dataloaders(full_path, params):
 
 
 def train_pnet(data_loader, val_loader, params: ParameterStore):
-    pnet = get_new_pnet_for_train(params)
+    if params.use_target_model:
+        print("Using target model")
+        pnet = get_new_target_pnet_for_train(params)
+    else:
+        pnet = get_new_pnet_for_train(params)
     engine = Engine()
     meter_fields = ['loss', 'acc']
     meters = {'train': {field: tnt.meter.AverageValueMeter() for field in meter_fields}}
@@ -80,6 +85,17 @@ def get_new_pnet_for_train(params: ParameterStore):
     if torch.cuda.is_available():
         pnet.cuda()
     return pnet
+
+def get_new_target_pnet_for_train(params: ParameterStore):
+    pnet = load_protonet_lin(
+        **{"x_dim": [params.x_dim], "hid_dim": params.hidden_dim, "z_dim": params.z_dim, "dropout": params.dropout,
+           "hidden_layers": params.hidden_layers})
+    pnet = ProtonetWithTarget(pnet.encoder, params.update_frequency, params.tau, params)
+    torch.cuda.manual_seed(1234)
+    if torch.cuda.is_available():
+        pnet.cuda()
+    return pnet
+
 
 
 if __name__ == '__main__':

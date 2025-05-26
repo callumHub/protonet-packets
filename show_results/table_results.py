@@ -3,10 +3,10 @@ import numpy as np
 from sklearn import metrics
 import matplotlib.pyplot as plt
 def main():
-    save_path="cli_vpn1h_0p025"
-    single = True
-    total_runs = 30
-    data_dict = load_data_into_frame(save_path)
+    save_path="spotify_30run_vpn_3hidden_dcal_stabletrain_bd_with_target_model_update25"
+    single = False
+    total_runs = 10
+    data_dict = load_data_into_frame(save_path, total_runs)
 
     if single:
         masking_effect = [get_masking_effect(data_dict["ood_before"][i]) for i in range(len(data_dict["ood_before"]))]
@@ -36,8 +36,8 @@ def main():
         ood_roc_auc = np.mean(ood_roc_auc_before)
         # ood_roc_auc_after = get_auroc(data_dict["ood_before"][:, :], data_dict["ood_after"][:, :])
         out_string = (
-            "{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}"
-            "+-{:.2f}")
+            "{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}"
+            "-{:.2f}")
         out_string = out_string.format(masking_effect, masking_effect_std, swamping_effect_ood, swamping_effect_ood_std,
                                        swamping_effect_iid, swamping_effect_iid_std,
                                        swamping_effect_iid_plus_class, swamping_effect_iid_plus_class_std,
@@ -50,37 +50,51 @@ def main():
         print(out_string)
     else:
         cali_data = [150, 130, 111, 91, 72, 53, 33]
-        percent_training_data= [80,70,60,50,40,30,20]
-        for i in range(total_runs):
+        percent_training_data= [20, 30, 40, 50, 60, 70, 80]
+        for i in range(len(percent_training_data)):
             out_string = multi_run_string_maker(data_dict, i)
-            print(out_string)
-        for i in range(total_runs):
-            print(f"{percent_training_data[i]}% ({cali_data[i]})")
+            print(percent_training_data[i],"% ", out_string)
+        #for i in range(total_runs):
+        #    print(f"{percent_training_data[i]}% ({cali_data[i]})")
 
 
 def multi_run_string_maker(data_dict, num_run):
-    masking_effect = get_masking_effect(data_dict["ood_before"][:, num_run, :])
-    swamping_effect_ood = get_swamping_effect(data_dict["ood_after"][:, num_run, :])
-    swamping_effect_iid = get_swamping_effect(data_dict["iid_before"][:, num_run, :])
-    swamping_effect_iid_plus_class = get_swamping_effect(data_dict["iid_after"][:, num_run, :])
-    avg_caliber_before, std_caliber_before = get_performance_data(data_dict["calib_before"][:, num_run])
-    avg_f1_before, std_f1_before = get_performance_data(data_dict["f1_before"][:, num_run])
-    avg_acc_before, std_acc_before = get_performance_data(data_dict["acc_before"][:, num_run])
-    avg_caliber_after, std_caliber_after = get_performance_data(data_dict["calib_after"][:, num_run])
-    avg_f1_after, std_f1_after = get_performance_data(data_dict["f1_after"][:, num_run])
-    avg_acc_after, std_acc_after = get_performance_data(data_dict["acc_after"][:, num_run])
-    ood_roc_auc = get_auroc(data_dict["ood_before"][:, num_run, :], data_dict["ood_after"][:, num_run])
-    ood_roc_auc_after = get_auroc(data_dict["ood_before"][:, num_run, :], data_dict["ood_after"][:, num_run], False)
-    out_string = "{:.2f}\t{:.2f}\t{:.2f}\t{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}+-{:.2f}\t{:.2f}"
-    out_string = out_string.format(masking_effect, swamping_effect_ood, swamping_effect_iid,
-                                   swamping_effect_iid_plus_class,
+    masking_effect = [get_masking_effect(data_dict["ood_before"][num_run, i]) for i in range(len(data_dict["ood_before"][0, :]))]
+    masking_effect_std = np.std(masking_effect)
+    masking_effect = np.mean(masking_effect)
+    swamping_effect_ood = [get_swamping_effect(data_dict["ood_after"][num_run, i]) for i in range(len(data_dict["ood_after"][0, :]))]
+    swamping_effect_ood_std = np.std(swamping_effect_ood)
+    swamping_effect_ood = np.mean(swamping_effect_ood)
+    swamping_effect_iid = [get_swamping_effect(data_dict["iid_before"][num_run, i]) for i in range(len(data_dict["iid_before"][0, :]))]
+    swamping_effect_iid_std = np.std(swamping_effect_iid)
+    swamping_effect_iid = np.mean(swamping_effect_iid)
+    swamping_effect_iid_plus_class = [get_swamping_effect(data_dict["iid_after"][i]) for i in
+                                      range(len(data_dict["iid_after"]))]
+    swamping_effect_iid_plus_class_std = np.std(swamping_effect_iid_plus_class)
+    swamping_effect_iid_plus_class = np.mean(swamping_effect_iid_plus_class)
+    avg_caliber_before, std_caliber_before = get_performance_data(data_dict["calib_before"][num_run, :])
+    avg_f1_before, std_f1_before = get_performance_data(data_dict["f1_before"][num_run, :])
+    avg_acc_before, std_acc_before = get_performance_data(data_dict["acc_before"][num_run, :])
+    avg_caliber_after, std_caliber_after = get_performance_data(data_dict["calib_after"][num_run, :])
+    avg_f1_after, std_f1_after = get_performance_data(data_dict["f1_after"][num_run, :])
+    avg_acc_after, std_acc_after = get_performance_data(data_dict["acc_after"][num_run, :])
+    ood_roc_auc_before = [get_auroc(data_dict["ood_before"][num_run, i], data_dict["ood_after"][num_run, i]) for i in
+                          range(len(data_dict["ood_before"][0, :]))]
+    ood_roc_auc_before_std = np.std(ood_roc_auc_before)
+    ood_roc_auc = np.mean(ood_roc_auc_before)
+    # ood_roc_auc_after = get_auroc(data_dict["ood_before"][:, :], data_dict["ood_after"][:, :])
+    out_string = (
+        "{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}-{:.2f}\t{:.2f}"
+        "-{:.2f}")
+    out_string = out_string.format(masking_effect, masking_effect_std, swamping_effect_ood, swamping_effect_ood_std,
+                                   swamping_effect_iid, swamping_effect_iid_std,
+                                   swamping_effect_iid_plus_class, swamping_effect_iid_plus_class_std,
                                    avg_caliber_before, std_caliber_before, avg_f1_before, std_f1_before, avg_acc_before,
                                    std_acc_before,
                                    avg_caliber_after, std_caliber_after, avg_f1_after, std_f1_after, avg_acc_after,
                                    std_acc_after,
-                                   ood_roc_auc)
+                                   ood_roc_auc, ood_roc_auc_before_std)
     return out_string
-
 
     #masking_effect_for_decreasing_z_values(data_dict["ood_before"])
     #swamp_effect_for_decreasing_z_values(data_dict["iid_after"])
@@ -112,21 +126,21 @@ def swamp_effect_for_decreasing_z_values(iid_data):
     for i in range(iid_data.shape[1]):
         print(get_swamping_effect(iid_data[:,i,:]))
 
-def load_data_into_frame(path_to_data, runs=10):
+def load_data_into_frame(path_to_data, runs):
     def read_all_z_values(load_dir, run_count):
         run_number = 0
         z_dims = [64, 56, 48, 40, 32, 24, 16, 8, 4, 2, 1]
         z_dims = [64]
-        #z_dims = [20, 30, 40, 50, 60, 70, 80]
+        z_dims = [20, 30, 40, 50, 60, 70, 80]
         all_ut_before, all_ut_after, all_vpn_before, all_vpn_after = [], [], [], []
         (all_calib_before, all_calib_after, all_f1_before,
          all_f1_after, all_acc_before, all_acc_after) = [], [], [], [], [], []
-        while run_number < run_count:
+        for j in range(len(z_dims)):
             all_z_ut_before, all_z_ut_after, all_z_vpn_before, all_z_vpn_after = [], [], [], []
             (all_z_calib_before, all_z_calib_after, all_z_f1_before,
              all_z_f1_after, all_z_acc_before, all_z_acc_after) = [], [], [], [], [], []
-            for i in range(len(z_dims)):
-                path_template = f"../runs/eval_outs/{load_dir}/z_{z_dims[i]}/run_{run_number}/"
+            for i in range(run_count):
+                path_template = f"../runs/eval_outs/{load_dir}/frac_{z_dims[j]}/run_{i}/"
                 #path_template = f"../runs/eval_outs/{load_dir}/cal_{z_dims[i]}/run_{run_number}/"
                 before_ut = path_template + f"ut_calib_ood_before/pval_from_ood_class_frac80.npy"
                 before_vpn = path_template + "vpn_calib_ood_before/pvals_from_existing_class_frac80.npy"
@@ -186,7 +200,7 @@ def get_masking_effect(ood_scores):
     :param ood_scores: numpy arr of ood scores
     :return: # of outliers falsely detected as inliers
     """
-    total_examples = ood_scores.shape[-1]#*ood_scores.shape[0]
+    total_examples = ood_scores.flatten().shape[-1]#*ood_scores.shape[0]
     total_iid = len(np.extract(ood_scores < 0.95, ood_scores))
     return total_iid/total_examples
 
@@ -197,12 +211,13 @@ def get_swamping_effect(iid_scores):
     :return: # of inliers falsely detected as outliers
     """
     # Total examples are # of examples per run * number of runs.
-    total_examples = iid_scores.shape[-1]#*iid_scores.shape[0]
+    total_examples = iid_scores.flatten().shape[-1]#*iid_scores.shape[0]
     total_ood_per = len(np.extract(iid_scores >= 0.95, iid_scores))
     return total_ood_per/total_examples
 
 def get_performance_data(performance_data):
     # shape: n_runs, n_z_dims
+
     average_metric = performance_data.mean(axis=0)
     std_metric = performance_data.std(axis=0)
     return average_metric, std_metric
