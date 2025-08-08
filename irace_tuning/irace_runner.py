@@ -2,9 +2,10 @@
 from runs.run_calibrate import load_dataset
 import numpy as np
 # used 'dos2unix' so that I can run this with wsl irace
-from parameter_store import ParameterStore
+from utils.parameter_store import ParameterStore
 from utils.data import sample_transform
 import scipy
+import os
 
 def main():
     import sys
@@ -18,8 +19,9 @@ def main():
                         datefmt='%Y-%m-%d %H:%M:%S',\
                         filename='irace_runner.log', filemode='a')
     logger = logging.getLogger(__name__)
-
-
+    if not torch.cuda.is_available():
+        logger.error("CUDA NOT AVAILABLE")
+        exit(1)
     configuration_id = sys.argv[1]
     instance_id = sys.argv[2]
     seed = sys.argv[3]
@@ -67,30 +69,39 @@ def main():
     data_path = "../../enc-vpn-uncertainty-class-repl/processed_data/stable_cal_fraction/min_max_normalized_20cal_val/run0/frac_60"
     #data_path = f"../../forest_ct_data/covertype_data/with_wavelets/stable_cal_fraction/min_max_normalized/run0/frac_80" # forest data
     params = ParameterStore(lr=lr, weight_decay=weight_decay, hidden_layers=hidden_layers, dropout=dropout, hidden_dim=hidden_size,
-                            n_classes=n_classes, n_way=n_way, x_dim=128, run_type="irace_run", epochs=1, episodes=20000,
+                            n_classes=n_classes, n_way=n_way, x_dim=128, run_type="irace_run", epochs=1, episodes=10000,
                             z_dim=64)
     train_dl, val_dl = init_dataloaders(full_path=data_path, params=params)
+    excep_occured = False
+    try:
+        acc, loss, pnet = train_pnet(train_dl, val_dl, params)
+    except Exception as e:
+        logger.error(e)
+        print(1.0)
+        excep_occured = True
 
 
-    acc, loss, pnet = train_pnet(train_dl, val_dl, params)
     if acc < 0.7:
         logger.warning("Accuracy lower than 0.7, Cov could be singular.\nAccuracy: {}".format(acc))
         print(1.0)
     elif acc > 0.7:
-        logger.info(f"Training completed. Train Accuracy: {acc}, Train Loss: {loss}")
-        try:
-            acc, calib, micro, confusion = irace_calibrate_and_test(pnet, False, False,
-                                            params.n_classes, params.n_way, params.n_support, params.n_query,
-                                              full_path=data_path)
-            logger.info(f"Calibration completed. Calibration Error: {calib}")
-            print(calib)
-        except (np.linalg.LinAlgError, scipy.integrate.IntegrationWarning) as e:
-            if e == np.linalg.LinAlgError:
-                logger.info(f"Lin alg error in calib, Train Loss: {loss}")
-            elif e == scipy.integrate.IntegrationWarning:
-                logger.info(f"Integration error in calib, Train Loss: {loss}")
-            calib = 1.0
-            print(calib)
+        if excep_occured:
+            print("1.0")
+        else:
+            logger.info(f"Training completed. Train Accuracy: {acc}, Train Loss: {loss}")
+            try:
+                acc, calib, micro, confusion = irace_calibrate_and_test(pnet, False, False,
+                                                params.n_classes, params.n_way, params.n_support, params.n_query,
+                                                  full_path=data_path)
+                logger.info(f"Calibration completed. Calibration Error: {calib}")
+                print(calib)
+            except (np.linalg.LinAlgError, scipy.integrate.IntegrationWarning) as e:
+                if e == np.linalg.LinAlgError:
+                    logger.info(f"Lin alg error in calib, Train Loss: {loss}")
+                elif e == scipy.integrate.IntegrationWarning:
+                    logger.info(f"Integration error in calib, Train Loss: {loss}")
+                calib = 1.0
+                print(calib)
 
     else:
         print(1.0)

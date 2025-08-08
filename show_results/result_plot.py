@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
 
 
 #frac_values = [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2] # length and values hardcoded and very coupled to below.
@@ -24,10 +25,12 @@ def main():
 
     run_type = "before_retrain"
     run_type = "retrained"
-    print(frac_values)
-    f1_data = np.load("../runs/eval_outs/retrained_test_caliber_on_one_run/pnet_micros.npy")
-    ece_data = np.load("../runs/eval_outs/retrained_test_caliber_on_one_run/pnet_calibs.npy")
+   # print(frac_values)
+    #f1_data = np.load("../runs/eval_outs/retrained_test_caliber_on_one_run/pnet_micros.npy")
+    #ece_data = np.load("../runs/eval_outs/retrained_test_caliber_on_one_run/pnet_calibs.npy")
+    confusion_matrix_data, macros = load_one_frac_n_run_confusion_data(100)
 
+    show_confusion_matrix(np.array(confusion_matrix_data).squeeze(), num_runs=10, macro_f1=np.mean(macros))
     #f1_data = np.load(f"../runs/eval_outs/{run_type}_utvpn_output/pnet_accs.npy")
     #micro_f1_against_data_frac(f1_data, "F1 DECREASING EPOCHS 1 Hidden")
     #confusion_data = np.load(forest_path)
@@ -36,8 +39,8 @@ def main():
 
     #ece_data = np.load(f"../runs/eval_outs/{run_type}_utvpn_output/pnet_calibs.npy")
     #ece_against_data_frac(ece_data, "ECE DECREASING EPOCHS 1 Hidden")
-    print("Calibration Error", ece_data)
-    print("Micro F1", f1_data)
+    #print("Calibration Error", ece_data)
+    #print("Micro F1", f1_data)
 
     #confusion_data = np.load(f"../runs/eval_outs/{run_type}_utvpn_output/pnet_confusions.npy")
     #show_confusion_matrix(confusion_data.squeeze())
@@ -81,7 +84,7 @@ def micro_f1_against_data_frac(micro_f1_scores, title=None):
 def ece_against_data_frac(ece_scores, title=None):
     general_plot(ece_scores, title)
 
-def show_confusion_matrix(confusion_matrix, data_frac=None):
+def show_confusion_matrix(confusion_matrix, num_runs, macro_f1, data_frac=None):
     #confusion_matrix = confusion_matrix.mean(axis=0)
     class_map = {0: "C2", 1: "CHAT", 2 : "FT", 3: "STREAM", 4: "VOIP"}
     if len(confusion_matrix[0]) > 8:
@@ -91,11 +94,11 @@ def show_confusion_matrix(confusion_matrix, data_frac=None):
             "DRIVE": 11, "DROPBOX": 12, "GMAIL": 13, "MESSENGER": 14
         } # NOTE HANGOUT AND MAPS HAD NO EXAMPLES
     elif len(confusion_matrix[0]) == 7:
-        class_map = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7}
+        class_map = {"Spruce-Fir": 1, "Lodgepole Pine": 2, "Ponderosa Pine": 3, "Cottonwood/Willow": 4, "Aspen": 5, "Douglas-Fir": 6, "Krummholz": 7}
     elif len(confusion_matrix[0]) == 6:
         class_map = {0: "C2", 1: "CHAT", 2: "FT", 3: "STREAM", 4: "VOIP", 5: "SPOTIFY"}
 
-    if data_frac is None:
+    if data_frac is not None:
         for i in range(len(frac_values)):
             #ax = sns.heatmap(confusion_matrix, )
             row_sums = confusion_matrix.sum(axis=1, keepdims=True)
@@ -125,11 +128,30 @@ def show_confusion_matrix(confusion_matrix, data_frac=None):
             plt.ylabel("True Label")
             plt.show()
     else:
-        index = int((0.8-data_frac)*10)
-        plot_df = pd.DataFrame(data=confusion_matrix[index]/confusion_matrix[index,0,:].sum(), columns=class_map.values(), index=class_map.values())
-        ax = sns.heatmap(plot_df, annot=True, fmt=".0%", yticklabels=class_map.values(), xticklabels=True)
-        cbar = ax.collections[0].colorbar
-        cbar.set_label("Class Balance", rotation=270, labelpad=15)
+        all_data = []
+        for i in range(len(confusion_matrix)):
+            data = confusion_matrix[i] / confusion_matrix[i, 0, :].sum()
+            if i == 0:
+                all_data = data
+            else:
+                all_data += data
+        all_data = all_data / len(confusion_matrix)
+        plot_df = pd.DataFrame(data=all_data, columns=class_map.values(), index=class_map.values())
+        ax = sns.heatmap(plot_df, annot=True, fmt=".1f", yticklabels=class_map.values(), xticklabels=True, cbar=False)
+        legend_elements = [
+            Line2D([0], [0], color='none', label=f"{i}: {label}")
+            for i, label in class_map.items()
+        ]
+
+        legend_elements.append(
+            Line2D([0], [0], color='none', label=f"\n\n\n\nMacro F1 Score: {macro_f1:.2f}")
+        )
+        plt.legend(
+            handles=legend_elements,
+            title="Class to Index Mapping",
+            bbox_to_anchor=(1.05, 1), loc='upper left'
+        )
+        plt.tight_layout()
         plt.show()
 
 def general_plot(data, title):
@@ -149,5 +171,34 @@ def general_plot(data, title):
     plt.legend()
     plt.show()
 
+
+def load_one_frac_n_run_confusion_data(num_runs):
+    path = "../runs/eval_outs/with_val_forest_ct_forest_3hidden_tunewidth"
+    macros, confusions = [], []
+    for i in range(num_runs):
+        load_path = path + f"/frac_80/run_{i}/"
+        confusion = np.load(load_path + "before_retrain_utvpn_output/pnet_confusions.npy")
+        confusions.append(confusion)
+        macro_f1 = macro_f1_score(confusion.squeeze())
+        macros.append(macro_f1)
+
+    return confusions, macros
+
+
+def macro_f1_score(conf_mat):
+    num_classes = conf_mat.shape[0]
+    f1_scores = []
+
+    for i in range(num_classes):
+        TP = conf_mat[i, i]
+        FP = conf_mat[:, i].sum() - TP
+        FN = conf_mat[i, :].sum() - TP
+
+        precision = TP / (TP + FP) if (TP + FP) > 0 else 0.0
+        recall = TP / (TP + FN) if (TP + FN) > 0 else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+        f1_scores.append(f1)
+
+    return np.mean(f1_scores)
 if __name__ == "__main__":
     main()

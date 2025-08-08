@@ -28,7 +28,7 @@ def get_kde(rel_mahalanobis, target_inds, n_way) -> list[gaussian_kde]:
 
         for idx in range(n_way):  # target_inds.squeeze().T[0]:
             # TODO: Sometimes gives singular covariance matrix error, must handle
-            class_kernel_densities.append(gaussian_kde(rel_mahalanobis[idx].cpu(),
+            class_kernel_densities.append(gaussian_kde(rel_mahalanobis[idx],
                                                        bw_method=float(class_bandwidths[idx])))
 
         return class_kernel_densities
@@ -147,7 +147,9 @@ class Protonet(nn.Module):
 
         z_cal = z[n_class * n_support:].view(n_class, n_cal, z_dim)
         #bias_diminish = [self, z_cal]
-        self.rmd = Mahalanobis(z_support)#, bias_diminish) # Now compute mahalanobis # USE support to set mahal vars
+        #TODO: Jun 24, changed og pnet from support in mahal to the mean of support in mahal.
+        input_to_mahal = z_support.mean(1).expand(n_class, n_class, z_dim)
+        self.rmd = Mahalanobis(z_support, n_cal=n_support) #, bias_diminish) # Now compute mahalanobis # USE support to set mahal vars
         # use calibrate to compute rel_mahal (if using sup, ood scores at test time will be higher
         m_k_rel = torch.min(self.rmd.relative_mahalanobis_distance(z_cal), dim=1).values.view(n_class, n_cal)
 
@@ -227,16 +229,18 @@ class Protonet(nn.Module):
             return pvals, torch.tensor(0.1), torch.tensor(0.01), torch.tensor(0.1), torch.tensor(0.01) # Dummy vals
 
     def ood_score(self, sample, g_k):
+        # TODO: June 24: Trying to figure Difference in OOD score, this now is the same as easyfsl at each step.
         n_class = len(g_k)
         n_examples = sample.size(0)
         z = self.encoder.forward(sample)
         z = z.unsqueeze(0)
-        dists = self.rmd.diag_mahalanobis_distance(z).view(1, n_examples, -1)
+        dists = self.rmd.diag_mahalanobis_distance(z).view(n_examples, -1)
         log_p_y = F.log_softmax(-dists, dim=1).view(n_examples, -1)
         _, y_hat = log_p_y.max(1)
 
         rel_d = torch.min(self.rmd.relative_mahalanobis_distance(z), dim=1).values.view(-1, n_examples)
-
+        rel_d = rel_d.detach().cpu().numpy()
+        y_hat = y_hat.detach().cpu().numpy()
         pvals = []
         mid_pvals = []
         correct_preds = 0
@@ -248,7 +252,7 @@ class Protonet(nn.Module):
             max_val = g_k[predicted_class].dataset.max()
             min_val = g_k[predicted_class].dataset.min()
             #p_val = quad(g_k[predicted_class].pdf, r, max_val+bw, limit=50000000, epsabs=1e-10, epsrel=1e-10)[0]  # Integrate pdf to get p values
-            grid = torch.linspace(r, max_val+10*g_k[predicted_class].factor, 7500000)
+            grid = torch.linspace(r, max_val+10*g_k[predicted_class].factor, 1500000)
             p_val = torch.trapz(torch.as_tensor(g_k[predicted_class].pdf(grid)), torch.as_tensor(grid)).item()
             mid_pvals.append(1 - p_val)  # confidence score is 1 minus the p value
         pvals.append(mid_pvals)

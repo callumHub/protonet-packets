@@ -3,8 +3,8 @@ import torch
 from data.vpn_packets import UT_MOBILE_CLASS_MAP, OG_CLASS_MAP, COMBINED_CLASS_MAP, ONE_OUT_CLASS_MAP #, load
 
 #TODO: To test with vpn loader, import load from data.vpn_packets
-#from data.forest_ct import load
-from data.vpn_packets import load
+from data.forest_ct import load
+#from data.vpn_packets import load
 from model.protonet import load_protonet_lin
 import numpy as np
 from tqdm import tqdm
@@ -160,10 +160,10 @@ def calibrate_and_ood_score(pnet, print_stats, use_cuda, n_classes, n_way, combi
         specific_class = iid_class
 
     class_specific_data = None
-    for sample in test_dl:
-        class_ind = class_map[specific_class]
-        class_specific_data = sample["xq"][class_ind]
-
+    #for sample in test_dl:
+     #   class_ind = class_map[specific_class]
+     #   class_specific_data = sample["xq"][class_ind]
+    class_specific_data = test_dl.dataset.data[specific_class]["data"][:100, :]
     pvals = pnet.ood_score(class_specific_data, g_k)
     return pvals
 

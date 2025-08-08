@@ -12,9 +12,10 @@ from scipy.spatial.distance import mahalanobis
 
 
 class Mahalanobis(object):
-    def __init__(self, calibration_embeddings, n_cal=None, bias_diminish=None):
-        super(Mahalanobis, self).__init__()
-        self.bias_diminish = bias_diminish
+    def __init__(self, calibration_embeddings, n_cal=5, n_clazz=None):
+        #super(Mahalanobis, self).__init__()
+        n_class = calibration_embeddings.shape[0]
+        self.calibration_embeddings = calibration_embeddings.view(n_class, n_cal, calibration_embeddings.shape[-1])
         self.calibration_embeddings = calibration_embeddings
         self.n_class, _, self.z_dim = calibration_embeddings.size()
         self.mu_0 = self._get_whole_mean()
@@ -36,11 +37,16 @@ class Mahalanobis(object):
             # fuckin multipy together! **debugger+tries every dimension combination*** =>
             # **transposes 0 & 1** => ***multiplies *** => :0
             radicand = torch.matmul(torch.matmul((z - mu_k).transpose(0, 1), torch.linalg.pinv(sigma)),
-                                    (z - mu_k).transpose(0, 1).mT).diagonal(dim1=1, dim2=2).T
-            return torch.sqrt(radicand)
+                                    (z - mu_k).transpose(0, 1).mT)  # .diagonal(dim1=1, dim2=2).T
+            dist = radicand.view(n, n, m).diagonal()
+            #dist = (dist - dist.mean())/(dist.std()+1e-10)
+            return dist
         else:
-            return torch.matmul(torch.matmul((z-mu_k), torch.linalg.pinv(sigma)),
+            dist = torch.matmul(torch.matmul((z-mu_k), torch.linalg.pinv(sigma)),
                                 (z-mu_k).mT).diagonal(dim1=1, dim2=2)
+            #dist = torch.pow(torch.pow(dist,2), 0.25)
+            #dist = (dist-dist.mean())/(dist.std()+1e-10)
+            return dist
 
     def _calc_mahalanobis_distance(self):
         return self.mahalanobis_distance(self.calibration_embeddings, self._get_class_means(), self._get_class_sigma())
@@ -54,6 +60,9 @@ class Mahalanobis(object):
         md_k = self._calc_mahalanobis_distance()
         md_0 = self._calc_overall_distance()
         self.calibration_embeddings = temp
+        #dist_signs = torch.sign(md_k - md_0)
+        #dist = torch.pow(torch.pow((md_k - md_0), 2), 0.25)
+        #dist = (dist - dist.mean())/(dist.std()+1e-10)
         return md_k - md_0
 
     def diag_mahalanobis_distance(self, z_test):
@@ -62,7 +71,6 @@ class Mahalanobis(object):
         :param z_test:
         :return:
         """
-        '''
         z = z_test.view(z_test.size(0)*z_test.size(1), -1)
         features = z.view(z.size(0), z.size(1), -1)
         features = torch.mean(features, 2).unsqueeze(0)
@@ -74,7 +82,6 @@ class Mahalanobis(object):
 
         return torch.cat(md_k, 1)
         return dk
-        '''
         diag_sigma_k = torch.diag_embed(self._get_class_sigma_k().diagonal(dim1=-2, dim2=-1))
         dk = self.mahalanobis_distance(z_test, self._get_class_means(), diag_sigma_k, diagonal=True)
         return dk
@@ -86,8 +93,7 @@ class Mahalanobis(object):
         :return: mean embedding for each support class
         """
         mu_k = self.calibration_embeddings.mean(1, keepdim=True)
-        if self.bias_diminish is not None:
-            return self.bias_diminish.reshape(self.n_class, 1, self.z_dim)
+
         return mu_k
 
     def _get_whole_mean(self) -> torch.Tensor:

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import gaussian_kde
 import torch
-
+from model.protonet import Protonet
 from model.protonet_with_target import ProtonetWithTarget
 from utils.experiment_context import bandwidth_value
 from utils.model import load_model
@@ -30,8 +30,8 @@ data_loader, val_loader = init_dataloaders(full_path, params)
 pnet = load_model(params.x_dim, params.hidden_dim, params.z_dim, params.dropout, params.hidden_layers,
                   "../runs/outs/vpn_3hidden.pt")
 #raw_pnet = ProtonetWithTarget(encoder=pnet.encoder, update_frequency=params.update_frequency, tau=params.tau, params=params)
-
-pnet.load_state_dict(torch.load("../runs/outs/vpn_3hidden.pt"))
+raw_pnet = Protonet(encoder=pnet.encoder,)
+raw_pnet.load_state_dict(torch.load("../runs/outs/vpn_3hidden.pt"))
 pnet.eval()
 #pnet.train()
 z_s = None
@@ -48,16 +48,16 @@ with torch.no_grad():
     z = pnet.encoder.forward(x)
 z_support = z[:n_class * n_support].view(n_class, n_support, 64)
 z_cal = z[n_class * n_support:].view(n_class, n_cal, 64)
-rmd = Mahalanobis(z_support, n_cal)  # Now compute mahalanobis # USE support to set mahal vars
+rmd = Mahalanobis(z_support, n_support)  # Now compute mahalanobis # USE support to set mahal vars
 # use calibrate to compute rel_mahal (if using sup, ood scores at test time will be higher
 #m_k_rel = torch.min(rmd.relative_mahalanobis_distance(z_cal), dim=1).values.view(n_class, n_cal)
 m_k_rel = rmd.relative_mahalanobis_distance(z_cal).view(n_class, n_cal, -1).min(dim=0).values.view(n_class, n_cal)
 max_val = m_k_rel.max()
 min_val = m_k_rel.min()
-test_point = min_val-bandwidth_value
+test_point = min_val-1
 print(np.mean([bw_selection.improved_sheather_jones(np.asarray(m_k_rel[i]).reshape(-1,1)) for i in range(n_class)]))
 g_k = get_kde(m_k_rel, [], n_class)
-
+print([bw_selection.improved_sheather_jones(np.asarray(m_k_rel[i]).reshape(-1,1)) for i in range(n_class)])
 
 # Define a common grid for KDE evaluation:
 
@@ -78,7 +78,7 @@ for ax, (label, samples) in zip(axes, data.items()):
     density = kde(x_grid)
 
     # Plot the KDE curve
-    plt.xlim(min_val+(max_val-min_val)*0.1, max_val+(max_val-min_val)*0.541)
+    plt.xlim(min_val-bandwidth_value, max_val+(max_val-min_val)*0.541)
     ax.plot(x_grid, density, label=label)
     ax.fill_between(x_grid, density, alpha=0.5)
     ax.set_title(label)

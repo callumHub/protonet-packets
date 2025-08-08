@@ -13,6 +13,7 @@ class Engine(object):
             self.hooks[hook_name] = lambda state: None
 
     def train(self, **kwargs):
+        losses = []
         state = {
             'model': kwargs['model'],
             'loader': kwargs['loader'],
@@ -35,9 +36,9 @@ class Engine(object):
 
             state['epoch_size'] = len(state['loader'])
             # REMOVED TQDM FOR IRACE
-            #pbar = tqdm(state['loader'])
+            pbar = tqdm(state['loader'])
             # For no tqdm, replace pbar with: state["loader"]
-            for sample in state['loader']:
+            for sample in pbar:
                 state['sample'] = sample
                 self.hooks['on_sample'](state)
 
@@ -46,6 +47,7 @@ class Engine(object):
                 self.hooks['on_forward'](state)
                 if torch.isnan(loss):
                     raise RuntimeError('Loss is NaN, episode: ', state['batch'])
+                display_loss = loss.item()
                 loss.backward()
                 self.hooks['on_backward'](state)
                 torch.nn.utils.clip_grad_value_(state['model'].parameters(), 100) # NEW
@@ -55,8 +57,8 @@ class Engine(object):
                 state['t'] += 1
                 state['batch'] += 1
                 self.hooks['on_update'](state)
-                #pbar.set_description("Epoch {:d} train, loss {:.2f}".format(state['epoch'] + 1, display_loss))
-
+                pbar.set_description("Epoch {:d} train, loss {:.5f}".format(state['epoch'] + 1, display_loss))
+                losses.append(display_loss)
 
 
             state['epoch'] += 1
@@ -64,3 +66,5 @@ class Engine(object):
             self.hooks['on_end_epoch'](state)
 
         self.hooks['on_end'](state)
+        import numpy as np
+        np.save(arr=np.asarray(losses), file="../runs/train_losses/losses.npy")

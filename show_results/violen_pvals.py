@@ -3,26 +3,37 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
+import os
+
+'''
+- 
+- No target run June 25 (working): "no_target_vpn_3hidden_j24_make_like_easyfsl" -> uses prototypes for mahal 
+ -> Above using prototypes to make mahal (skipping per class mahal making)
+- Target run June 25: "target_vpn_3hidden_j25_make_like_easyfsl"
+-> Looks OK going down but violins are spread out compared to no target
+- No target, run June 25 (night): 
+-> 'using jorgensens input to mahal' no_target_vpn_3hidden_j25n_make_like_jorg, 
+This has the correct behaviour as well. But the differences are smaller than with the BDCSPN
+-> no_target_vpn_3hidden_j25n_make_like_jorg_spotify: Same as above with spotify
+'''
 def main():
-    # vpn_3hidden: 7 runs before fail,
-    # vpn_basic: 1 run before fail,
-    # vpn_bd: 1 run before fail,
-    # vpn_min_ece: 0 runs before fail,
-    #
-    num_runs = 30
-    load_dir = "all_same_iid_30run_vpn_3hidden_dcal_stabletrain"
+    num_runs = 100
+    load_dir = "forest_ct_forest_3hidden_tunewidth"
     z_dims = [64, 56, 48, 40, 32, 24, 16, 8, 4, 2, 1]
     z_dims = [20, 30, 40, 50, 60, 70, 80]
-    z_dims = [64]
+    #z_dims = [64]
     # z_dims = [0.05]
     z_dims = [0.075, 0.05, 0.025, 0.01, 0.005, 0.001, 0.00075, 0.0005, 0.00025]
     z_dims = [20, 30, 40, 50, 60, 70, 80]
+    z_dims = [80]
+    #z_dims=[20,30,40]
+    #z_dims=[40]
     #z_dims = [70]
     #z_dims = [50, 60, 70, 80]
     #z_dims = [50]
     # z_dims = [80,70,60,50]
     # z_dims = [0.00025]
-    data_to_plot = "avg_OOD"
+    data_to_plot = "OOD_score"
     #data_to_plot = "avg_OOD"
 
     ut_before, ut_after, vpn_before, vpn_after = read_all_z_values(load_dir, num_runs, z_dims)
@@ -96,7 +107,7 @@ def main():
         inner="box",  # Adds a boxplot inside each violin
         linewidth=1.2,  # Make outlines sharper
         palette="Set2",
-        bw_method=0.05,
+        bw_method=0.14,
         width=.86,
         density_norm="area",
         fill=False,
@@ -105,8 +116,9 @@ def main():
     #plt.setp(ax.collections, alpha=0.3)
     #plt.scatter(x="Z_value", y=medians, c="k")
     # TITLE FOR DECREASING CAL
+    amount_of_examples = len(ut_df_before[data_to_plot])
     plt.title(f"{"".join(load_dir.split("_")[:2])}\n"
-              f"\'FILE TRANSFER\'IID Data ({len(ut_df_before[data_to_plot])}) examples\n '10 run {data_to_plot} varying amount of data used to generate kernels' BW: SJ")
+              f"\'FILE TRANSFER\'OOD Data ({amount_of_examples}) examples\n '10 run {data_to_plot}' BW: SJ")
 
     #plt.title(f"{"".join(load_dir.split("_")[:2])}\n"
     #          f"\'FILE TRANSFER\'OOD Data ({len(ut_df_before[data_to_plot])/num_runs}) examples\n '10 run {data_to_plot}' BW: SJ")
@@ -148,6 +160,7 @@ def read_all_z_values(load_dir, run_count, z_dims):
         for i in range(len(z_dims)):
             path_template = f"../runs/eval_outs/{load_dir}/frac_{z_dims[i]}/run_{run_number}/"
             #path_template = f"../runs/eval_outs/{load_dir}/z_{z_dims[i]}/run_{run_number}/"
+
             before_ut = path_template + f"ut_calib_ood_before/pval_from_ood_class_frac80.npy"
             before_vpn = path_template + "vpn_calib_ood_before/pvals_from_existing_class_frac80.npy"
             after_ut = path_template + f"ut_calib_ood_after/pval_from_ood_class_frac80.npy"
@@ -168,7 +181,7 @@ def prepare_df(before, after):
     # Flatten data for plotting
     def prepare_dataframe(scores, label):
         #scores = np.asarray(torch.tensor(scores).unsqueeze(0).unsqueeze(0))
-        #scores = np.asarray(torch.tensor(scores).unsqueeze(1))
+        scores = np.asarray(torch.tensor(scores).unsqueeze(1))
         runs, z_dims, samples = scores.shape
         data = []
         for run in range(runs):

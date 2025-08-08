@@ -3,9 +3,9 @@ import numpy as np
 from sklearn import metrics
 import matplotlib.pyplot as plt
 def main():
-    save_path="spotify_30run_vpn_3hidden_dcal_stabletrain_bd_with_target_model_update25"
-    single = False
-    total_runs = 10
+    save_path="with_val_forest_ct_forest_3hidden_tunewidth"
+    single = True
+    total_runs = 100
     data_dict = load_data_into_frame(save_path, total_runs)
 
     if single:
@@ -131,7 +131,8 @@ def load_data_into_frame(path_to_data, runs):
         run_number = 0
         z_dims = [64, 56, 48, 40, 32, 24, 16, 8, 4, 2, 1]
         z_dims = [64]
-        z_dims = [20, 30, 40, 50, 60, 70, 80]
+        #z_dims = [20, 30, 40, 50, 60, 70, 80]
+        z_dims=[80]
         all_ut_before, all_ut_after, all_vpn_before, all_vpn_after = [], [], [], []
         (all_calib_before, all_calib_after, all_f1_before,
          all_f1_after, all_acc_before, all_acc_after) = [], [], [], [], [], []

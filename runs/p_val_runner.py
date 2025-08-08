@@ -1,4 +1,5 @@
 import copy
+import gc
 from time import sleep
 
 from utils.parameter_store import HyperParameterStore
@@ -8,16 +9,23 @@ import sys
 import logging
 import os
 from data.vpn_packets import COMBINED_CLASS_MAP, OG_CLASS_MAP
+
 import torch
 import numpy as np
+
 np.random.seed(42)
 torch.manual_seed(1234)
 torch.cuda.manual_seed(1234)
 torch.cuda.manual_seed_all(1234)
 
 
-COMBINED_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood/all_classes" # coarse 4 class combined to 5
-OG_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood/no_ft" # coarse 4 class
+#COMBINED_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood/all_classes" # coarse 4 class combined to 5
+#OG_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood/no_ft" # coarse 4 class
+
+#COMBINED_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/stable_cal_fraction_ut/min_max_normalized/decreasing_cal_decrease_train/run0/frac_60"
+
+COMBINED_PATH = "../../forest_ct_data/covertype_data/splits/split0"
+OG_PATH = COMBINED_PATH
 
 #COMBINED_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood_type2/all_classes"
 #OG_PATH = "../../enc-vpn-uncertainty-class-repl/processed_data/coarse_grain_ood_type2/no_chat"
@@ -114,26 +122,19 @@ def cli_runner():
 def main():
     import utils.experiment_context
     # For this run I changed mean bandwidth to specific bw for each class
-    model_names = ["vpn_3hidden"]#, "vpn_1h", "vpn_min_ece", "vpn_3h_high_dropout"]
+    model_names = ["forest_3hidden_tunewidth"]#, "vpn_1h", "vpn_min_ece", "vpn_3h_high_dropout"]
     for model_name in model_names:
         utils.experiment_context.bandwidth_experiment = True
-        n_classes = 5
-        params = HyperParameterStore().get_model_params(model_name, "vpn_models")
+        n_classes = 7
+        params = HyperParameterStore().get_model_params(model_name, "forest_models")
         params.n_classes = n_classes
         params.n_way = n_classes
         params.use_target_model = False
         pre_experiment_params = copy.deepcopy(params)
-        try:
-            decrease_z_dim_p_val_experiment(params, save_folder=f"no_target_ftood_30run_{model_name}_dcal_stabletrain",#_bd_with_target_model_update25",
-                                            ood_class="FILE_TRANSFER", iid_class="CHAT",
-                                        combined_path=COMBINED_PATH, one_out_path=OG_PATH)
-        except Exception as e:
-            logger.log(level=logging.WARNING, msg=f"FAILURE WITH MODEL: {model_name}")
-            logger.log(logging.ERROR, "The following exception occurred when running model: ", model_name)
-            logger.log(logging.ERROR, e)
+        decrease_z_dim_p_val_experiment(params, save_folder=f"with_val_forest_ct_{model_name}",#_bd_with_target_model_update25",
+                                        ood_class=2, iid_class=1,
+                                    combined_path=COMBINED_PATH, one_out_path=OG_PATH)
 
-            break
-        print(f"*************************************** {model_name} done. *****************************************************\n\n")
     exit(11)
     while True:
         try:
@@ -173,19 +174,21 @@ def main():
     params.n_way = minority_n_classes
     decrease_z_dim_p_val_experiment(params, save_folder="hold_out_ft_decreasing_z_dim_basic")
     '''
-def decrease_z_dim_p_val_experiment(params, ood_class: str, iid_class: str, save_folder, combined_path, one_out_path):
+def decrease_z_dim_p_val_experiment(params, ood_class, iid_class, save_folder, combined_path, one_out_path):
     import utils.experiment_context
     fracs = [20, 30, 40, 50, 60, 70, 80]
     #fracs = [50, 60, 70, 80] # Debug: instability happens at these fracs.
     bws = [0.05]
-
+    fracs = [80]
     for k in range(10):
         for i in range(10):
             for j in range(len(fracs)):
                 run_number = i+(k*10)
                 print("RUNNING WITH FRAC ", fracs[j])
-                combined_path = f"../../enc-vpn-uncertainty-class-repl/processed_data/decreasing_cal_stable_train/run{i}/frac_{fracs[j]}/all_classes"
-                one_out_path = f"../../enc-vpn-uncertainty-class-repl/processed_data/decreasing_cal_stable_train/run{i}/frac_{fracs[j]}/no_ft"
+                combined_path = f"../../enc-vpn-uncertainty-class-repl/processed_data/decreasing_cal_stable_train_ut/run{i}/frac_{fracs[j]}/all_classes"
+                one_out_path = f"../../enc-vpn-uncertainty-class-repl/processed_data/decreasing_cal_stable_train_ut/run{i}/frac_{fracs[j]}/no_spotify"
+                combined_path = f"../../enc-vpn-uncertainty-class-repl/processed_data/stable_cal_fraction_forest_ct/min_max_normalized/decreasing_cal_stable_train/run{i}/frac_80"
+                one_out_path = combined_path
                 #utils.experiment_context.bandwidth_value = bws[0]
                 pval_experiment_runner(params, run_number, run_desc=f"{save_folder}/frac_{fracs[j]}/run_{run_number}/",
                                        ood_class=ood_class, iid_class=iid_class, combined_path=combined_path,
@@ -194,11 +197,12 @@ def decrease_z_dim_p_val_experiment(params, ood_class: str, iid_class: str, save
 
 def pval_experiment_runner(params, run_count, run_desc, ood_class: str, iid_class: str, combined_path: str,
                            one_out_path, class_map: dict):
-    protonet = None
+
     curr_classes = params.n_classes
-    params.n_classes = curr_classes - 1
+    #params.n_classes = curr_classes - 1
     print(params.n_classes)
     _, _, protonet = run_train(params, full_path=one_out_path)  # train without spotify data
+
     protonet.eval()
     # get ood scores for ood data
     run_calibrate_and_ood_comparison(frac=80, run_desc_og=run_desc+"vpn_calib_ood_before", run_desc_ut=run_desc+"ut_calib_ood_before",
@@ -212,7 +216,8 @@ def pval_experiment_runner(params, run_count, run_desc, ood_class: str, iid_clas
     torch.save(protonet.state_dict(), os.path.join(os.getcwd(), "outs", f"{params.run_type}_before.pt"))
     # Retrain with ood data
     params.n_classes = params.n_way = curr_classes
-    _, _, protonet = run_train(params, full_path=combined_path)
+    #_, _, protonet = run_train(params, full_path=combined_path)
+
     protonet.eval()
     # get ood scores for spotify data after retrain
     run_calibrate_and_ood_comparison(frac=80, run_desc_og=run_desc+"vpn_calib_ood_after", run_desc_ut=run_desc+"ut_calib_ood_after",

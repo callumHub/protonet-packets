@@ -20,10 +20,10 @@ class ParameterStore:
     n_support: int = 5
     n_query: int = 30
     use_target_model: bool = False
-    update_frequency: int = 25
-    tau: float = 0.90
-    proto_combinator: float = 0.1
-    combinator_slope: float = 0.000045
+    update_frequency: int = 3
+    tau: float = 1.0
+    proto_combinator: float = 0
+    combinator_slope: float = 5e-5
 
 class HyperParameterStore:
     def __init__(self):
@@ -49,6 +49,8 @@ class HyperParameterStore:
                                                                dropout=0.18591,
                                                                lr=0.003382, weight_decay=0.0000021,
                                                                hidden_dim=64, hidden_layers=3),
+            "forest_3hidden_tunewidth": ParameterStore(run_type="forest_3hidden_tunewidth", n_classes=7, x_dim=62, n_way=7,
+                                                       dropout=0.284728, lr=0.004171, hidden_dim=161, hidden_layers=3, weight_decay=0.000025)
 
         },
         "vpn_models": {
@@ -69,7 +71,7 @@ class HyperParameterStore:
                                           lr=0.000669, weight_decay=0.00168, hidden_dim=64, hidden_layers=3),
             "vpn_bd": ParameterStore(run_type="vpn_bd_calib", n_classes=5, x_dim=128, n_way=5,
                                      dropout=0.26141, lr=0.000657, weight_decay=0, hidden_dim=64, hidden_layers=3,
-                                     episodes=10000),
+                                     use_target_model=True),
         }
     }
 

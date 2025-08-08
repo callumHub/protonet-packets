@@ -25,8 +25,8 @@ class ProtonetWithTarget(Protonet):
         self.proto_combinator = params.proto_combinator
         self.combinator_slope = params.combinator_slope
     def loss(self, sample, batch):
-        self.proto_combinator = min(1.0, self.proto_combinator+self.combinator_slope*batch)
-        self.tau = min(0.99, self.tau+self.proto_combinator*batch*0.1)
+        self.proto_combinator = min(0.5, self.proto_combinator+self.combinator_slope*batch)
+        #self.tau = min(0.99, self.tau+self.proto_combinator*batch*0.1)
 
         if (batch+1) % self.update_frequency == 0:
             #self.update_target_network()
@@ -58,17 +58,15 @@ class ProtonetWithTarget(Protonet):
                        xq.view(n_class * n_query, *xq.size()[2:])], 0)
         # TARGET MODEL DUTY: Get support set and prototype, use prediction to update prototype.
         with torch.no_grad():
-            z_target = self.target.forward(x)
-        z_target = F.normalize(z_target, p=2, dim=-1)
+            z_target = self.target.forward(x).detach()
+        #z_target = F.normalize(z_target, p=2, dim=-1)
         z_dim = z_target.size(-1)
         z_target_sup = z_target[:n_class*n_support].view(n_class, n_support, z_dim)
         z_target_q = z_target[n_class*n_support:].view(n_class, n_query, z_dim)
 
-        if batch == 658:
-            pass
+
         z_proto_rect = z_target_sup.mean(1)  # Remove mean if using mahal
         z_proto_rect = self.rectify_prototypes(query_features=z_target_q, support_features=z_target_sup, prototypes=z_proto_rect)
-
 
         # Predictive model duty
         z = self.encoder.forward(x)
@@ -77,10 +75,14 @@ class ProtonetWithTarget(Protonet):
         # RECTIFY PROTOTYPES: (removed to test during calibrate
         # if batch > 100:
         #    z_proto = self.rectify_prototypes(query_features=zq.view(n_class, n_query, z_dim), support_features=z_sup, prototypes=z_proto)
+        max_norm = 20.0
+        z_proto_actual = torch.renorm(z_proto_actual, p=2, dim=0, maxnorm=max_norm)
+        z_proto_rect = torch.renorm(z_proto_rect, p=2, dim=0, maxnorm=max_norm)
         z_proto = z_proto_rect*self.proto_combinator + z_proto_actual*(1.0-self.proto_combinator)
-        zq = F.normalize(zq, p=2, dim=-1)
-        z_proto = F.normalize(z_proto, p=2, dim=-1)
+
+
         dists = euclidean_dist(zq, z_proto)
+
         log_p_y = F.log_softmax(-dists, dim=1).view(n_class, n_query, -1)
 
         loss_val = -log_p_y.gather(2, target_inds).squeeze().view(-1).mean()
@@ -121,10 +123,12 @@ class ProtonetWithTarget(Protonet):
 
         z_cal = z[n_class * n_support:].view(n_class, n_cal, z_dim)
         bias_diminish = self.rectify_prototypes(z_q, z_support, z_support.mean(1))
-        self.rmd = Mahalanobis(z_support, n_support, bias_diminish) # Now compute mahalanobis # USE support to set mahal vars
+        input_to_mahal = bias_diminish.expand(n_class, n_class, z_dim)
+        input_to_mahal = z_support
+        self.rmd = Mahalanobis(input_to_mahal, n_support) # Now compute mahalanobis # USE support to set mahal vars
         # use calibrate to compute rel_mahal (if using sup, ood scores at test time will be higher
-        m_k_rel = torch.min(self.rmd.relative_mahalanobis_distance(z_cal), dim=1).values.view(n_class, n_cal)
-
+        m_k_rel = torch.min(self.rmd.relative_mahalanobis_distance(z_cal.view(n_class, n_cal, -1)), dim=1).values.view(n_class, n_cal)
+        m_k_rel = m_k_rel.detach().numpy()
         # Obtain n_class Gaussian KDE's for each class
         g_k = get_kde(m_k_rel, target_inds, n_class)
         return g_k # Used in alg 3!

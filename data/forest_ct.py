@@ -47,7 +47,7 @@ class ForestCTDataset(Dataset):
         dicter.make_dict()
         min_class = len(dicter.df.data[dicter.df["labels"] == dicter.df.labels.value_counts().keys()[-1]])
         self.n_support = 5 if min_class > 8 else 3
-        self.batch_size = min_class - self.n_support
+        self.batch_size = min(100, min_class - self.n_support)
         self.data = dicter.out_dict
     def __len__(self):
         return len(self.data)
@@ -56,7 +56,7 @@ class ForestCTDataset(Dataset):
         key = int(idx) + 1 # labels start from 1
         return episode_sampler(self.data[key], self.batch_size, self.n_support)
 
-def load(splits, n_episodes, n_classes, n_way, fp=None):
+def load(splits, n_episodes, n_classes, n_way, n_sup, n_query, fp=None):
     if fp: ds = ForestCTDataset(splits, n_classes, full_path=fp)
     else: ds = ForestCTDataset(splits, n_classes)
     sampler = EpisodicBatchSampler(n_classes, n_way, n_episodes)
